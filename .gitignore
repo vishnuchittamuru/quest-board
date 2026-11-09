@@ -1,0 +1,9 @@
+# Personal encrypted quest vaults & temporary files
+.quest-vault.enc.json
+*.enc.json
+*.tmp
+
+# Node / OS artifacts
+node_modules/
+.DS_Store
+Thumbs.db

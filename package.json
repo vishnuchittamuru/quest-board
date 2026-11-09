@@ -1,0 +1,32 @@
+{
+  "name": "aethoria-quest-board",
+  "version": "1.0.0",
+  "description": "Zero-dependency, AES-256-GCM encrypted terminal RPG Quest Board for daily task management.",
+  "type": "module",
+  "main": "quest-board.js",
+  "bin": {
+    "quest": "./quest-board.js",
+    "quest-board": "./quest-board.js"
+  },
+  "scripts": {
+    "start": "node quest-board.js",
+    "list": "node quest-board.js list",
+    "fate": "node quest-board.js fate",
+    "help": "node quest-board.js --help"
+  },
+  "keywords": [
+    "cli",
+    "tui",
+    "todo",
+    "quest-board",
+    "rpg",
+    "gamification",
+    "encrypted",
+    "aes-256-gcm",
+    "terminal"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}
