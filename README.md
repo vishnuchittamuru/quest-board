@@ -1,82 +1,89 @@
-# ⚔️ Aethoria Guildhall — Encrypted Terminal Quest Board
+# ⚔️ Aethoria Guildhall v2 — Encrypted Terminal Quest Board
 
-A zero-dependency, **AES-256-GCM encrypted** RPG Quest Board for the terminal. Built with pure Node.js (`node:crypto`, `node:fs`, `node:readline`) so it runs out of the box with no external packages required.
+A zero-dependency, **AES-256-GCM encrypted** RPG Quest Board & Habit Tracker for the terminal. Built with pure Node.js (`node:crypto`, `node:fs`, `node:readline`) with 24-bit truecolor rendering and automatic 256-color fallback.
 
 ---
 
-## ✨ Features
+## ✨ What's in v2
 
-- **🔐 Password-Protected Encrypted Vault**: All quests, notes, and hero progression are stored in a clean JSON envelope (`.quest-vault.enc.json`) encrypted with `scrypt` key derivation and authenticated `AES-256-GCM`.
-- **🎒 Active Quest Pouch (Daily Loadout)**: Pick 3–5 quests from the **Guild Notice Board** into your **Active Quest Pouch** for today's run. Clearing your active pouch triggers a **Daily Full-Clear Combo** with bonus XP, Gold, and streak progression.
-- **🏷️ Guild Priority Ranks (`S` / `A` / `B` / `C` / `D`)**: Prioritize tasks by threat level, from `[S-Rank] Mythic Calamity` down to `[D-Rank] Quick Errand`, scaling XP, Gold, and Relic drop rates.
-- **🗺️ Realms & Grouping**: Organize quests into customizable Realms (e.g., *Main Campaign*, *Craft & Code*, *Arcane Study*, *Homestead*) and cycle filters with `Tab`.
-- **❤️ Boss HP Bars & Sub-Quest Strikes**: Break complex tasks into sub-steps that form an ASCII Boss HP bar. Press `1`–`9` to strike sub-steps, land Critical Hits, and drain the boss's HP!
-- **📜 Lore & Field Notes**: Attach timestamped details and notes to any quest scroll.
-- **🎲 Roll the d20 of Fate (`d`)**: Can't decide what to work on? Roll an animated ASCII d20 to let the board assign a quest with a **1.5x XP & Gold Bounty** (or **2.0x Mythic Bounty + guaranteed Relic** on a Natural 20!).
-- **🏕️ Planned Tavern Leave / Vacation Mode (`v`)**: Pause questing ahead of time for 1, 3, 7, 14, or custom days when going on vacation so your streak stays 100% protected while you rest.
-- **🦉 Interactive NPC Guildmaster, Relics & Themes**: Dynamic commentary from Guildmaster Garrick, 8 collectible ASCII Relics with passive buffs (`l`), and 6 unlockable terminal color themes (`t`).
+### 1. Three Interactive Board Layouts (`F1` / `F2` / `F3`)
+- **Always-Visible Date & Atmosphere Banner**: Shows the current date, time-of-day lighting phase, seasonal event, NPC companion, and Daily Commission Chest meter across every layout.
+- **`[F1]` Classic Guild Board**: Split-pane Notice Board, **Active Quest Pouch**, **Daily Rituals** tab, **Hall of Legends**, numbered Category (`Tab`) filter pills, and live **Daily Rituals Pulse Bar**.
+- **`[F2]` War Table (Kanban by Realm)**: Side-by-side columns with a pinned **Daily Rituals** column (`y`), **Realm Health** bars, `[DUSTY]` warnings on neglected realms (7+ days), and `<` / `>` card movement between Realms.
+- **`[F3]` Battle Arena (Focus Mode + Pomodoro)**: Fight your selected quest or ritual as a procedurally generated ASCII Monster (or grow it from Seed to Radiant Bloom in *Cozy Cottage*!), complete with timed **Pomodoro Focus Rounds**, sub-step attack moves, and a timestamped **Combat Log**.
+
+### 2. Repeating Items & Daily Rituals (`y` & `P`)
+- Track repeating habits like **Drink Water (8/8 charges)**, **Workout**, **10-Min Clean**, **Study**, or custom routines with cadences (`Daily`, `Weekdays`, `Weekends`, `Weekly`, `Every 3 Days`). Daily items automatically rotate and reset at midnight.
+- **Mastery Chains**: Consecutive completions build **Bronze ★ (3d)** → **Silver ★★ (7d)** → **Gold ★★★ (14d)** → **Mythic ✦ (30d)** multipliers.
+- **Daily Commission Supply Chest**: Completing your daily rituals opens a bonus chest (`+60 XP`, `+30 Gold`, + Relic roll).
+- **Recurring Board Quests (`R`)**: Toggle repeat cadences on regular board quests so completed weekly chores respawn automatically.
+
+### 3. Biomes, Wizards & Dual-Language Help (`t`, `n`, `e`, `?`)
+Each Biome transforms **colors, box borders, vocabulary, NPC companion, progress metaphors, add/edit wizards, and ambient particles**:
+- **Tavern Hearth** (Default) — Guildmaster Garrick, drifting embers
+- **Neon Syndicate** — Fixer AI NYX, cyberpunk `Gigs` & `Creds`, digital rain
+- **Cozy Cottage** — Granny Owl, falling petals, quests *sprout and bloom* instead of losing HP
+- **Pirate Cove** — Captain Polly, `Bounties` & `Doubloons`, ocean swells
+- **Phosphor CRT** — Distraction-free monochrome green terminal
+
+Stacked dynamic modifiers: **Streak Heat Borders** (Iron → Bronze → Gold → Animated Flame), **Time-of-Day Lighting** (`Dawn`, `Daylight`, `Dusk`, `Starlight`), and **Seasonal Calendar Events** (*Frostfall*, *Spring Bloom*, *Midsummer Nights*, *Harvest Moon*) with seasonal Relics.
+Press **`?`** anytime for the **Field Manual**, showing every hotkey for `[F1]`, `[F2]`, `[F3]`, and Global keys side-by-side in **Theme Language** and **Normal Language**.
+
+### 4. Security & Planned Rest
+- **AES-256-GCM + `scrypt` Encryption**: Vault stored safely in `.quest-vault.enc.json` (ignored by `.gitignore`).
+- **Planned Tavern Leave (`v`)**: Protect both your Hero streak and Daily Ritual chains ahead of time when stepping away or going on vacation.
 
 ---
 
 ## 🚀 Quick Start
 
 ```powershell
-cd D:\Dev\Base1\repos\quest-board
-
-# Launch the interactive full-screen TUI
+cd quest-board
 .\quest
-# or
-npm start
-# or
-node quest-board.js
-```
-
-*(Optional)* To make `quest` available globally from any directory on your machine:
-```powershell
-npm link
+# or: npm start
+# or: node quest-board.js --no-anim
 ```
 
 ---
 
-## ⌨️ Interactive TUI Hotkeys
+## ⌨️ Interactive Hotkeys
 
 | Key | Action |
 | :--- | :--- |
-| `↑` / `↓` or `k` / `j` | Navigate quests |
-| `Space` | Embark / Un-embark quest into **Today's Active Quest Pouch** |
-| `b` / `p` / `a` | Switch view: **Guild Board** (`b`), **Active Pouch** (`p`), **Hall of Legends** (`a`) |
-| `Tab` | Cycle **Realm / Group** filter |
-| `1` – `9` | Strike sub-step #1–9 (deals Boss HP damage & awards chip XP) |
-| `c` or `Enter` | **Slay / Complete** selected quest for XP, Gold & Loot rolls |
-| `u` | Re-open a completed quest from the Hall of Legends |
-| `d` | **Roll the d20 of Fate** (assigns a random open quest with a 1.5x–2.0x Bounty) |
-| `n` | Post a **New Quest Scroll** |
-| `s` / `m` | Add a **Sub-step** (`s`) or **Field Note** (`m`) to the selected quest |
-| `r` | Cycle priority rank (`S` → `A` → `B` → `C` → `D`) |
-| `o` | Cycle sort order (`rank` → `hp` → `newest`) |
-| `e` / `x` | Edit quest scroll (`e`) or Delete quest (`x`) |
-| `v` | **Tavern Leave (Vacation Mode)** — protect your streak for N days |
-| `l` / `t` | Open **Reliquary Loot Vault** (`l`) or **Visual Themes** (`t`) |
-| `K` | Change Vault Encryption Passphrase |
-| `?` / `q` | Help Manual (`?`) / Save & Quit (`q`) |
+| `F1` / `F2` / `F3` | Switch Layout: **Classic Board** (`F1`), **War Table Kanban** (`F2`), **Battle Arena** (`F3`) |
+| `↑/↓/←/→` or `h/j/k/l` | Navigate quests, rituals, and War Table columns |
+| `Space` | Pick into Active Pouch · Strike/Charge Daily Ritual · Direct Strike in Arena |
+| `1` – `9` | Strike sub-step #1–9 (deals Boss HP damage with Critical Hit rolls) |
+| `c` | Complete / Slay selected quest or complete ritual |
+| `Enter` | Enter **Battle Arena** on selected item (or Final Blow while in Arena) |
+| `y` / `P` | Open **Daily Rituals** (`y`) · Quick-Add **Ritual Presets** (`P`) |
+| `b` / `p` / `a` | Switch Classic tabs (`b` Board, `p` Pouch, `a` Hall of Legends) · On `F2`/`F3`, `a` opens Legends popup |
+| `Tab` / `Shift+Tab` | Cycle **Realm / Group** filter forward or backward |
+| `<` / `>` | Move quest card to previous/next Realm on the **War Table** |
+| `f` / `\` / `F` | Battle Arena Pomodoro: Start/Pause (`f`), Cycle 15/25/45m (`\`), Finish Round (`F`) |
+| `d` | **Roll the d20 of Fate** (1.5x–2.0x Bounty) |
+| `n` / `s` / `m` / `e` / `x` | New item with numbered group picker (`n`), +Sub-step (`s`), +Note (`m`), Edit (`e`), Delete (`x`) |
+| `r` / `R` | Cycle Rank `S–D` (`r`) · Toggle Quest Repeat Cadence (`R`) |
+| `v` / `i` / `t` | **Tavern Leave** (`v`), **Reliquary** (`i`), **Biomes & Atmosphere** (`t`) |
+| `K` / `?` / `q` | Change Passphrase (`K`), Dual-Language Help Manual (`?`), Save & Quit (`q`) |
 
 ---
 
-## ⚡ Quick CLI One-Liner Commands
+## ⚡ Quick CLI One-Liners
 
 ```powershell
-# View Hero status, Active Quest Pouch & Guild Board
+# Summary of Hero, Daily Rituals, Active Pouch & Board
 .\quest list
 
-# Post a quest directly from the terminal
-.\quest add "Slay the authentication bug" --rank A --realm "Craft & Code" --steps "Reproduce,Write test,Fix" --note "Check token TTL" --active
+# Daily Rituals CLI
+.\quest ritual list
+.\quest ritual add "Drink Water" --count 8 --cadence daily --realm Homestead
+.\quest ritual hit "Drink Water"
 
-# Roll the d20 of Fate from the CLI
+# Post a recurring or one-time quest
+.\quest add "Refactor Auth Service" --rank A --realm "Craft & Code" --steps "Audit,Patch,Test" --repeat weekly --active
+
+# Roll for Fate or schedule Tavern Leave
 .\quest fate
-
-# Schedule Tavern Leave for 5 days (or 0 to resume early)
 .\quest leave 5
-
-# Complete a quest by title substring or ID
-.\quest done "authentication bug"
 ```
