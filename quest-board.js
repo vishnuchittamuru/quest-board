@@ -37,6 +37,7 @@ import {
   isOnTavernLeave,
   xpRequiredForLevel,
   getHeroTitle,
+  getRelicDisplay,
   computeQuestHp,
   hasRelic,
   awardXpAndGold,
@@ -487,16 +488,22 @@ class QuestBoardTUI {
     const biome = getBiome(this.state);
     const p = biome.palette;
     const v = biome.vocab;
-    const bannerText = `✦ ${v.title} (${biome.name}) — ${title} ✦`;
+    const bannerText = biome.isPlain
+      ? `✦ ${v.title} — ${title} ✦`
+      : `✦ ${v.title} (${biome.name}) — ${title} ✦`;
     const innerW = Math.max(54, bannerText.length + 4);
     const bar = '═'.repeat(innerW);
     console.log('');
     console.log(paint(`╔${bar}╗`, { fg: p.borderBright, bold: true }));
     console.log(paint(`║  ${bannerText.padEnd(innerW - 2)}║`, { fg: p.headerFg, bg: p.headerBg, bold: true }));
     console.log(paint(`╚${bar}╝`, { fg: p.borderBright, bold: true }));
-    const companion = `${paint(biome.npcMoods.idle.trim(), { fg: p.accent, bold: true })} ${paint(biome.npcName, { fg: p.accent2, bold: true })}`;
     const sub = subtitle ? paint(` · ${subtitle}`, { fg: p.muted }) : '';
-    console.log(`  ${companion}${sub}\n`);
+    if (biome.isPlain) {
+      console.log(`  ${paint('[INFO]', { fg: p.accent, bold: true })}${sub}\n`);
+    } else {
+      const companion = `${paint(biome.npcMoods.idle.trim(), { fg: p.accent, bold: true })} ${paint(biome.npcName, { fg: p.accent2, bold: true })}`;
+      console.log(`  ${companion}${sub}\n`);
+    }
     return biome;
   }
 
@@ -559,7 +566,7 @@ class QuestBoardTUI {
       if (!forceRitual) {
         this.printWizardHeader(
           `NEW ${v.quest.toUpperCase()} OR ${v.ritual.toUpperCase()}`,
-          `Theme: ${biome.name}`
+          biome.isPlain ? 'Standard View' : `Theme: ${biome.name}`
         );
         const choice = (
           await promptLine(
@@ -578,7 +585,12 @@ class QuestBoardTUI {
             `Resets automatically by schedule`
           );
         } else {
-          console.log(paint(`\n  ── Forging Repeating ${v.ritual} (Daily Habit) ──\n`, { fg: p.ritual, bold: true }));
+          console.log(
+            paint(
+              biome.isPlain ? `\n  ── New Repeating ${v.ritual} ──\n` : `\n  ── Forging Repeating ${v.ritual} (Daily Habit) ──\n`,
+              { fg: p.ritual, bold: true }
+            )
+          );
         }
         const title = await promptLine(`  1. ${v.ritual} Title (blank to cancel)`, '', p);
         if (!title) return;
@@ -589,7 +601,7 @@ class QuestBoardTUI {
         const rank = RANK_KEYS.includes(rankIn) ? rankIn : 'C';
         const defaultRealm = this.realmFilter !== 'ALL' ? this.realmFilter : 'Homestead';
         const realm = await this.promptRealmSelection(`  5. ${v.realm} (Task Group)`, defaultRealm);
-        const note = await promptLine('  6. Note / Cue (optional)', '', p);
+        const note = await promptLine(biome.isPlain ? '  6. Note (optional)' : '  6. Note / Cue (optional)', '', p);
 
         this.state.rituals.unshift({
           id: 'rit-' + crypto.randomBytes(4).toString('hex'),
@@ -608,12 +620,17 @@ class QuestBoardTUI {
           notes: note ? [note] : [],
         });
         this.selectedRitualIndex = 0;
-        this.setCombatBanner(`"Added repeating ${v.ritual}: '${title}' (${CADENCES[cadence].label}, ${targetCount}x)!"`, 'hype');
+        this.setCombatBanner(`Added repeating ${v.ritual}: '${title}' (${CADENCES[cadence].label}, ${targetCount}x).`, 'hype');
         return;
       }
 
       if (!forceRitual) {
-        console.log(paint(`\n  ── Posting New ${v.quest} (Task) ──\n`, { fg: p.borderBright, bold: true }));
+        console.log(
+          paint(
+            biome.isPlain ? `\n  ── New ${v.quest} ──\n` : `\n  ── Posting New ${v.quest} (Task) ──\n`,
+            { fg: p.borderBright, bold: true }
+          )
+        );
       }
       const title = await promptLine(`  1. ${v.quest} Title (blank to cancel)`, '', p);
       if (!title) return;
@@ -626,7 +643,7 @@ class QuestBoardTUI {
         ? stepsRaw.split(',').map((s) => s.trim()).filter(Boolean).map((text) => ({ text, done: false }))
         : [];
       const recurrence = await this.promptCadenceSelection('  5. Repeat Cadence', 'none', true);
-      const noteRaw = await promptLine('  6. Field Note (optional)', '', p);
+      const noteRaw = await promptLine(biome.isPlain ? '  6. Note (optional)' : '  6. Field Note (optional)', '', p);
       const pickNow = (await promptLine(`  7. Add to Today's ${v.pouch} (Today's List)? [Y/n]`, 'Y', p)).toLowerCase();
 
       this.state.quests.unshift({
@@ -694,12 +711,15 @@ class QuestBoardTUI {
       const biome = getBiome(this.state);
       const v = biome.vocab;
       const p = biome.palette;
-      this.printWizardHeader(`ADD SUB-STEP TO ${v.quest.toUpperCase()}`, quest.title);
+      this.printWizardHeader(
+        biome.isPlain ? `ADD CHECKLIST STEP TO ${v.quest.toUpperCase()}` : `ADD SUB-STEP TO ${v.quest.toUpperCase()}`,
+        quest.title
+      );
       const text = await promptLine('  New Sub-Step (blank to cancel)', '', p);
       if (text) {
         if (!quest.steps) quest.steps = [];
         quest.steps.push({ text, done: false });
-        this.setCombatBanner(`"Added objective '${text}'!"`, 'idle');
+        this.setCombatBanner(biome.isPlain ? `Added step '${text}'.` : `"Added objective '${text}'!"`, 'idle');
       }
     });
   }
@@ -711,13 +731,16 @@ class QuestBoardTUI {
     await this.withPromptMode(async () => {
       const biome = getBiome(this.state);
       const p = biome.palette;
-      this.printWizardHeader('ADD FIELD NOTE / DETAIL', item.title);
+      this.printWizardHeader(biome.isPlain ? 'ADD NOTE / DETAIL' : 'ADD FIELD NOTE / DETAIL', item.title);
       const text = await promptLine('  Note / Detail (blank to cancel)', '', p);
       if (text) {
         if (!item.notes) item.notes = [];
         const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         item.notes.push(`[${stamp}] ${text}`);
-        this.setCombatBanner(`"Field note inscribed onto '${item.title}'."`, 'idle');
+        this.setCombatBanner(
+          biome.isPlain ? `Note added to '${item.title}'.` : `"Field note inscribed onto '${item.title}'."`,
+          'idle'
+        );
       }
     });
   }
@@ -726,7 +749,10 @@ class QuestBoardTUI {
     await this.withPromptMode(async () => {
       const biome = getBiome(this.state);
       const p = biome.palette;
-      this.printWizardHeader('RE-FORGE VAULT PASSPHRASE', 'AES-256-GCM Encryption Key');
+      this.printWizardHeader(
+        biome.isPlain ? 'CHANGE VAULT PASSPHRASE' : 'RE-FORGE VAULT PASSPHRASE',
+        'AES-256-GCM Encryption Key'
+      );
       const cur = await promptHiddenPassword(`  ${paint('Current Passphrase:', { fg: p.accent, bold: true })} `);
       if (cur !== this.password) {
         console.log(paint('\n  ✖ Incorrect current passphrase!', { fg: '#ff3b5c' }));
@@ -743,14 +769,23 @@ class QuestBoardTUI {
       }
       this.password = next1;
       this.save();
-      this.setCombatBanner('"Arcane Vault Seal re-forged with your new passphrase!"', 'hype');
+      this.setCombatBanner(
+        biome.isPlain ? 'Vault passphrase updated!' : '"Arcane Vault Seal re-forged with your new passphrase!"',
+        'hype'
+      );
     });
   }
 
   async rollForFateAnimation() {
+    const biome = getBiome(this.state);
     const candidates = this.state.quests.filter((q) => q.status === 'open');
     if (candidates.length === 0) {
-      this.setCombatBanner('"No open contracts to roll for! Press [n] to create one."', 'tease');
+      this.setCombatBanner(
+        biome.isPlain
+          ? 'No open tasks to pick from! Press [n] to create one.'
+          : '"No open contracts to roll for! Press [n] to create one."',
+        'tease'
+      );
       this.render();
       return;
     }
@@ -771,9 +806,13 @@ class QuestBoardTUI {
     const isNat20 = finalRoll === 20;
     chosen.inPouch = true;
     chosen.bountyMultiplier = isNat20 ? 2.0 : 1.5;
-    chosen.bountyLabel = isNat20
-      ? 'NAT 20 MYTHIC BOUNTY (2.0x + Relic!)'
-      : `d20=${finalRoll} FATE BOUNTY (1.5x)`;
+    if (biome.isPlain) {
+      chosen.bountyLabel = isNat20 ? '2.0x BONUS PICK (+Badge!)' : '1.5x BONUS PICK';
+    } else {
+      chosen.bountyLabel = isNat20
+        ? 'NAT 20 MYTHIC BOUNTY (2.0x + Relic!)'
+        : `d20=${finalRoll} FATE BOUNTY (1.5x)`;
+    }
     this.state.hero.fateRolls = (this.state.hero.fateRolls || 0) + 1;
 
     this.save();
@@ -782,7 +821,11 @@ class QuestBoardTUI {
     if (idx >= 0) this.selectedIndex = idx;
 
     this.setCombatBanner(
-      isNat20
+      biome.isPlain
+        ? isNat20
+          ? `★ 2.0x BONUS PICK! '${chosen.title}' added to Today's List with a guaranteed Badge!`
+          : `► Random Pick: '${chosen.title}' added to Today's List (1.5x reward bonus)!`
+        : isNat20
         ? `★ NATURAL 20!! '${chosen.title}' gets a 2.0x MYTHIC BOUNTY & guaranteed Relic!`
         : `♦ Rolled d20=[${finalRoll}]! '${chosen.title}' added with a 1.5x Bounty!`,
       'fate'
@@ -796,6 +839,7 @@ class QuestBoardTUI {
     const quest = focused.item;
     if (!quest.steps || !quest.steps[stepIdx]) return;
 
+    const biome = getBiome(this.state);
     const step = quest.steps[stepIdx];
     step.done = !step.done;
 
@@ -805,13 +849,18 @@ class QuestBoardTUI {
       if (isCrit) this.state.hero.critsLanded = (this.state.hero.critsLanded || 0) + 1;
       awardXpAndGold(this.state, chipXp, isCrit ? 4 : 2);
       const hp = computeQuestHp(quest);
-      const msg = isCrit
+      const msg = biome.isPlain
+        ? `✔ Completed step '${step.text}' (+${chipXp} XP) — ${100 - hp.pct}% done.`
+        : isCrit
         ? `★ CRITICAL STRIKE! '${step.text}' (+${chipXp} XP) -> ${hp.pct}% HP left!`
         : `► Direct Hit! '${step.text}' (+${chipXp} XP) -> ${hp.pct}% HP left.`;
-      this.pushArenaLog(quest, `${isCrit ? 'CRIT!' : 'HIT'} ${step.text} (+${chipXp} XP)`);
+      this.pushArenaLog(quest, `${biome.isPlain ? 'DONE' : isCrit ? 'CRIT!' : 'HIT'} ${step.text} (+${chipXp} XP)`);
       this.setCombatBanner(msg, 'crit');
     } else {
-      this.setCombatBanner(`"Re-opened sub-step '${step.text}'."`, 'idle');
+      this.setCombatBanner(
+        biome.isPlain ? `Re-opened step '${step.text}'.` : `"Re-opened sub-step '${step.text}'."`,
+        'idle'
+      );
     }
 
     this.save();
@@ -822,24 +871,37 @@ class QuestBoardTUI {
     const layout = this.state.hero.layout || 'classic';
     const focused = this.getFocusedItem();
     if (!focused) return;
+    const biome = getBiome(this.state);
+    const v = biome.vocab;
 
     if (focused.kind === 'ritual') {
       const r = focused.item;
       const res = strikeRitual(this.state, r);
       if (!res) return;
       if (res.alreadyDone) {
-        this.setCombatBanner(`"'${r.title}' is already completed today! Press [u] to reset."`, 'idle');
+        this.setCombatBanner(`'${r.title}' is already completed today! Press [u] to reset.`, 'idle');
       } else if (!res.completed) {
-        this.pushArenaLog(r, `Charge ${res.progressCount}/${res.targetCount} (+${res.finalXp} XP)`);
+        this.pushArenaLog(r, `${biome.isPlain ? 'Progress' : 'Charge'} ${res.progressCount}/${res.targetCount} (+${res.finalXp} XP)`);
         this.setCombatBanner(
-          `⟳ '${r.title}' charged: ${renderChargeBar(res.progressCount, res.targetCount)} (+${res.finalXp} XP)`,
+          biome.isPlain
+            ? `⟳ '${r.title}' progress: ${renderChargeBar(res.progressCount, res.targetCount)} (+${res.finalXp} XP)`
+            : `⟳ '${r.title}' charged: ${renderChargeBar(res.progressCount, res.targetCount)} (+${res.finalXp} XP)`,
           'crit'
         );
       } else {
-        this.pushArenaLog(r, `COMPLETED! Chain ${r.streak}d (+${res.finalXp} XP)`);
-        let msg = `✔ DAILY RITUAL DONE! '${r.title}' (${r.streak}d Chain!) +${res.finalXp} XP, +${res.finalGold}g`;
-        if (res.chestOpened) msg += ' ★ COMMISSION CHEST OPENED (+60 XP, +30g)!';
-        if (res.chestDrop) msg += ` ✦ RELIC: [${res.chestDrop.name}]!`;
+        this.pushArenaLog(r, `COMPLETED! ${biome.isPlain ? 'Streak' : 'Chain'} ${r.streak}d (+${res.finalXp} XP)`);
+        let msg = biome.isPlain
+          ? `✔ ${v.ritual} done! '${r.title}' (${r.streak}d streak) +${res.finalXp} XP, +${res.finalGold}${v.currencyShort}`
+          : `✔ DAILY RITUAL DONE! '${r.title}' (${r.streak}d Chain!) +${res.finalXp} XP, +${res.finalGold}${v.currencyShort}`;
+        if (res.chestOpened) {
+          msg += biome.isPlain
+            ? ` ★ DAILY HABIT BONUS (+60 XP, +30${v.currencyShort})!`
+            : ` ★ COMMISSION CHEST OPENED (+60 XP, +30${v.currencyShort})!`;
+        }
+        if (res.chestDrop) {
+          const drop = getRelicDisplay(res.chestDrop, biome.isPlain);
+          msg += ` ✦ ${biome.isPlain ? 'BADGE' : 'RELIC'}: [${drop.name}]!`;
+        }
         this.setCombatBanner(msg, 'hype');
       }
       this.save();
@@ -863,9 +925,13 @@ class QuestBoardTUI {
       const xp = isCrit ? 14 : 8;
       awardXpAndGold(this.state, xp, 2);
       const hp = computeQuestHp(q);
-      this.pushArenaLog(q, `${isCrit ? 'CRIT' : 'STRIKE'} -${chunk} HP (+${xp} XP)`);
+      this.pushArenaLog(q, biome.isPlain ? `PROGRESS +25% (+${xp} XP)` : `${isCrit ? 'CRIT' : 'STRIKE'} -${chunk} HP (+${xp} XP)`);
       this.setCombatBanner(
-        hp.pct <= 0
+        biome.isPlain
+          ? hp.pct <= 0
+            ? '✔ Task reached 100% progress! Press [c] to mark complete.'
+            : `► Logged +25% progress (+${xp} XP) — ${100 - hp.pct}% done.`
+          : hp.pct <= 0
           ? `★ BOSS STAGGERED AT 0% HP! Press [c] to deal the Final Blow!`
           : `⚔ ${isCrit ? 'CRIT!' : 'Strike!'} Dealt ${chunk} dmg (+${xp} XP) -> ${hp.pct}% HP left!`,
         'crit'
@@ -881,7 +947,7 @@ class QuestBoardTUI {
       this.save();
       this.setCombatBanner(
         q.inPouch
-          ? `★ Added '${q.title}' to Today's ${getBiome(this.state).vocab.pouch}!`
+          ? `★ Added '${q.title}' to Today's ${v.pouch}!`
           : `Returned '${q.title}' to the board.`,
         q.inPouch ? 'hype' : 'idle'
       );
@@ -892,15 +958,22 @@ class QuestBoardTUI {
   handleCompleteItem() {
     const focused = this.getFocusedItem();
     if (!focused) return;
+    const biome = getBiome(this.state);
+    const v = biome.vocab;
 
     if (focused.kind === 'ritual') {
       const r = focused.item;
       r.progressCount = Math.max(0, (r.targetCount || 1) - 1);
       const res = strikeRitual(this.state, r);
       if (res && !res.alreadyDone) {
-        let msg = `✔ '${r.title}' completed! (${r.streak}d Chain) +${res.finalXp} XP, +${res.finalGold}g`;
-        if (res.chestOpened) msg += ' ★ DAILY COMMISSION CHEST OPENED!';
-        if (res.chestDrop) msg += ` ✦ RELIC: [${res.chestDrop.name}]!`;
+        let msg = biome.isPlain
+          ? `✔ '${r.title}' completed! (${r.streak}d streak) +${res.finalXp} XP, +${res.finalGold}${v.currencyShort}`
+          : `✔ '${r.title}' completed! (${r.streak}d Chain) +${res.finalXp} XP, +${res.finalGold}${v.currencyShort}`;
+        if (res.chestOpened) msg += biome.isPlain ? ' ★ DAILY HABIT BONUS!' : ' ★ DAILY COMMISSION CHEST OPENED!';
+        if (res.chestDrop) {
+          const drop = getRelicDisplay(res.chestDrop, biome.isPlain);
+          msg += ` ✦ ${biome.isPlain ? 'BADGE' : 'RELIC'}: [${drop.name}]!`;
+        }
         this.setCombatBanner(msg, 'hype');
         this.save();
         this.render();
@@ -912,10 +985,15 @@ class QuestBoardTUI {
     if (q.status === 'done') return;
     const res = completeQuest(this.state, q);
     this.save();
-    let msg = `★ SLAIN! '${q.title}' -> +${res.finalXp} XP, +${res.finalGold}g!`;
+    let msg = biome.isPlain
+      ? `✔ Completed '${q.title}' -> +${res.finalXp} XP, +${res.finalGold}${v.currencyShort}!`
+      : `★ SLAIN! '${q.title}' -> +${res.finalXp} XP, +${res.finalGold}${v.currencyShort}!`;
     if (res.leveledUp) msg += ` ★ LEVEL UP Lv.${res.newLevel}!`;
-    if (res.fullClearTriggered) msg += ' ★ FULL-CLEAR COMBO!';
-    if (res.droppedRelic) msg += ` ✦ RELIC: [${res.droppedRelic.name}]!`;
+    if (res.fullClearTriggered) msg += biome.isPlain ? " ★ TODAY'S LIST CLEARED!" : ' ★ FULL-CLEAR COMBO!';
+    if (res.droppedRelic) {
+      const drop = getRelicDisplay(res.droppedRelic, biome.isPlain);
+      msg += ` ✦ ${biome.isPlain ? 'BADGE' : 'RELIC'}: [${drop.name}]!`;
+    }
     this.setCombatBanner(msg, 'hype');
     this.render();
   }
@@ -932,8 +1010,9 @@ class QuestBoardTUI {
     this.focus.round += 1;
     this.focus.remainingSec = this.focus.durationMins * 60;
     this.save();
+    const v = getBiome(this.state).vocab;
     this.setCombatBanner(
-      `${autoComplete ? '⏳ FOCUS ROUND COMPLETE!' : '★ FOCUS BURST LOGGED!'} +${reward.finalXp} XP, +${reward.finalGold}g!`,
+      `${autoComplete ? '⏳ FOCUS ROUND COMPLETE!' : '★ FOCUS BURST LOGGED!'} +${reward.finalXp} XP, +${reward.finalGold}${v.currencyShort}!`,
       'hype'
     );
     this.render();
@@ -1385,24 +1464,30 @@ class QuestBoardTUI {
         this.render();
         return;
       }
-      if (str >= '1' && str <= String(BIOME_LIST.length)) {
-        const picked = BIOME_LIST[parseInt(str, 10) - 1];
+      if (str === '0' || (str >= '1' && str <= String(BIOME_LIST.length))) {
+        const picked = str === '0' ? BIOMES.default : BIOME_LIST[parseInt(str, 10) - 1];
         const hero = this.state.hero;
-        if (!hero.unlockedBiomes) hero.unlockedBiomes = ['tavern', 'crt'];
+        if (!hero.unlockedBiomes) hero.unlockedBiomes = ['default', 'tavern', 'crt'];
+        const curShort = getBiome(this.state).vocab.currencyShort;
         if (isBiomeUnlocked(hero, picked)) {
           hero.activeBiome = picked.id;
           this.save();
-          this.setCombatBanner(`"Switched Biome to ${picked.name}!"`, 'hype');
+          this.setCombatBanner(
+            picked.isPlain
+              ? 'Switched to Default (Standard) view — clean text & no theme.'
+              : `"Switched Biome to ${picked.name}!"`,
+            picked.isPlain ? 'idle' : 'hype'
+          );
           this.activeModal = null;
         } else if (hero.gold >= picked.cost) {
           hero.gold -= picked.cost;
           hero.unlockedBiomes.push(picked.id);
           hero.activeBiome = picked.id;
           this.save();
-          this.setCombatBanner(`"Unlocked & equipped '${picked.name}' for ${picked.cost}g!"`, 'hype');
+          this.setCombatBanner(`"Unlocked & equipped '${picked.name}' for ${picked.cost}${curShort}!"`, 'hype');
           this.activeModal = null;
         } else {
-          this.setCombatBanner(`"Need ${picked.cost}g or deed (${picked.deedDesc}) for ${picked.name}!"`, 'tease');
+          this.setCombatBanner(`"Need ${picked.cost}${curShort} or deed (${picked.deedDesc}) for ${picked.name}!"`, 'tease');
           this.activeModal = null;
         }
         this.render();
@@ -1440,9 +1525,11 @@ class QuestBoardTUI {
             notes: p.note ? [p.note] : [],
           });
           this.save();
-          this.setCombatBanner(`"Added Daily Ritual '${p.title}'!"`, 'hype');
+          const v = getBiome(this.state).vocab;
+          this.setCombatBanner(`Added ${v.ritual} '${p.title}'!`, 'hype');
         } else {
-          this.setCombatBanner(`"'${p.title}' is already on your Daily Rituals list."`, 'idle');
+          const v = getBiome(this.state).vocab;
+          this.setCombatBanner(`'${p.title}' is already on your ${v.rituals} list.`, 'idle');
         }
         this.activeModal = null;
         this.viewTab = 'rituals';
@@ -1453,29 +1540,46 @@ class QuestBoardTUI {
 
     if (this.activeModal === 'leave') {
       const presets = { '1': 1, '2': 3, '3': 7, '4': 14 };
+      const biome = getBiome(this.state);
       if (str === '0') {
         scheduleTavernLeave(this.state, 0);
         this.save();
         this.activeModal = null;
-        this.setCombatBanner('"Welcome back from Tavern Leave! Ready for action!"', 'hype');
+        this.setCombatBanner(
+          biome.isPlain ? 'Welcome back! Break mode ended.' : '"Welcome back from Tavern Leave! Ready for action!"',
+          'hype'
+        );
         this.render();
       } else if (presets[str]) {
         const days = presets[str];
         const until = scheduleTavernLeave(this.state, days);
         this.save();
         this.activeModal = null;
-        this.setCombatBanner(`✦ Leave signed! Streak & ritual chains protected until ${until}.`, 'leave');
+        this.setCombatBanner(
+          biome.isPlain
+            ? `✦ Break scheduled! Streak & habit chains protected until ${until}.`
+            : `✦ Leave signed! Streak & ritual chains protected until ${until}.`,
+          'leave'
+        );
         this.render();
       } else if (str === '5') {
         this.activeModal = null;
         await this.withPromptMode(async () => {
-          const biome = getBiome(this.state);
-          const p = biome.palette;
-          this.printWizardHeader('CUSTOM TAVERN LEAVE DURATION', 'Streak & Habit Chain Protection');
+          const curBiome = getBiome(this.state);
+          const p = curBiome.palette;
+          this.printWizardHeader(
+            curBiome.isPlain ? 'CUSTOM BREAK DURATION' : 'CUSTOM TAVERN LEAVE DURATION',
+            'Streak & Habit Chain Protection'
+          );
           const daysStr = await promptLine('  How many days will you be away? (1-90)', '5', p);
           const days = Math.max(1, Math.min(90, parseInt(daysStr, 10) || 5));
           const until = scheduleTavernLeave(this.state, days);
-          this.setCombatBanner(`✦ Leave signed! Streak protected for ${days} days until ${until}.`, 'leave');
+          this.setCombatBanner(
+            curBiome.isPlain
+              ? `✦ Break scheduled! Streak protected for ${days} days until ${until}.`
+              : `✦ Leave signed! Streak protected for ${days} days until ${until}.`,
+            'leave'
+          );
         });
       }
     }
@@ -1530,6 +1634,7 @@ function parseCliArgs(argv) {
     else if (a === '--cols' && args[i + 1]) opts.cols = Math.max(80, parseInt(args[++i], 10) || 110);
     else if (a === '--rows' && args[i + 1]) opts.rows = Math.max(24, parseInt(args[++i], 10) || 32);
     else if (a === '--active' || a === '-a') opts.active = true;
+    else if (a === '--plain' || a === '--default-view') opts.biome = 'default';
     else if (a === '--no-anim') opts.noAnim = true;
     else if (a === '--no-lighting') opts.noLighting = true;
     else if (a === '--list' || a === 'list' || a === 'status') {
@@ -1552,7 +1657,7 @@ function printCliHelp() {
 ${paint('⚔  AETHORIA GUILDHALL v2 — ENCRYPTED TERMINAL QUEST BOARD  ⚔', { fg: '#ffd166', bold: true })}
 
 ${paint('Interactive Full-Screen TUI (Layouts: [F1] Board · [F2] War Table · [F3] Battle Arena):', { fg: '#f09d38' })}
-  node quest-board.js [--no-anim] [--no-lighting]
+  node quest-board.js [--plain] [--no-anim] [--no-lighting]
 
 ${paint('Quick Quest CLI Commands:', { fg: '#f09d38' })}
   node quest-board.js list                 Show Hero, Daily Rituals, Active Pouch & Board
@@ -1569,7 +1674,8 @@ ${paint('Repeating Daily Rituals CLI Commands:', { fg: '#90be6d' })}
 ${paint('Vault & Preview Options:', { fg: '#f09d38' })}
   --vault <path>                           Custom AES-256-GCM encrypted vault path
   --pass <passphrase>                      Vault passphrase (or prompted securely)
-  node quest-board.js render-preview [--layout classic|wartable|arena] [--biome tavern|neon|cottage|pirate|crt] [--view board|pouch|rituals]
+  --plain                                  Launch in Default (Standard) non-themed view
+  node quest-board.js render-preview [--layout classic|wartable|arena] [--biome default|tavern|neon|cottage|pirate|crt] [--view board|pouch|rituals|archive]
 `);
 }
 
@@ -1581,17 +1687,29 @@ function printCliBoardSummary(state) {
   const comm = getCommissionStatus(state);
 
   console.log(paint('\n╔══════════════════════════════════════════════════════════════════════════╗', { fg: biome.palette.borderBright, bold: true }));
-  console.log(`║ ⚔ ${hero.name} [Lv.${hero.level} ${getHeroTitle(hero.level)}] │ XP: ${hero.xp}/${xpReq} │ ${hero.gold}${v.currencyShort} │ ♦ Streak: ${hero.streak}d │ ◷ ${formatDisplayDate(new Date(), false)} │ Biome: ${biome.name}`);
+  console.log(`║ ${biome.isPlain ? '◆' : '⚔'} ${hero.name} [Lv.${hero.level} ${getHeroTitle(hero.level, biome.isPlain)}] │ XP: ${hero.xp}/${xpReq} │ ${hero.gold}${v.currencyShort} │ ♦ Streak: ${hero.streak}d │ ◷ ${formatDisplayDate(new Date(), false)} │ ${biome.isPlain ? 'View' : 'Biome'}: ${biome.name}`);
   if (isOnTavernLeave(hero)) {
-    console.log(`║ ${paint(`ON TAVERN LEAVE UNTIL ${hero.leaveUntil} (Streak Protected)`, { fg: '#80ed99' })}`);
+    console.log(
+      `║ ${paint(
+        biome.isPlain
+          ? `ON BREAK UNTIL ${hero.leaveUntil} (Streak Protected)`
+          : `ON TAVERN LEAVE UNTIL ${hero.leaveUntil} (Streak Protected)`,
+        { fg: '#80ed99' }
+      )}`
+    );
   }
   console.log(paint('╚══════════════════════════════════════════════════════════════════════════╝', { fg: biome.palette.borderBright, bold: true }));
 
-  console.log(paint(`\n⟳ ${v.rituals.toUpperCase()} (${comm.completedCount}/${comm.target} Commission Chest):`, { fg: biome.palette.ritual, bold: true }));
+  console.log(
+    paint(
+      `\n⟳ ${v.rituals.toUpperCase()} (${comm.completedCount}/${comm.target} ${biome.isPlain ? 'Daily Bonus' : 'Commission Chest'}):`,
+      { fg: biome.palette.ritual, bold: true }
+    )
+  );
   for (const r of state.rituals || []) {
     const cad = CADENCES[r.cadence]?.short || 'DAILY';
     const icon = r.completedToday ? '✔' : isRitualDueToday(r) ? '⟳' : '·';
-    console.log(`  ${icon} ${renderChargeBar(r.progressCount, r.targetCount)}  ${r.title} [${cad}] (${r.streak || 0}d chain)`);
+    console.log(`  ${icon} ${renderChargeBar(r.progressCount, r.targetCount)}  ${r.title} [${cad}] (${r.streak || 0}d ${biome.isPlain ? 'streak' : 'chain'})`);
   }
 
   const open = state.quests.filter((q) => q.status === 'open');
@@ -1601,13 +1719,15 @@ function printCliBoardSummary(state) {
   console.log(paint(`\n★ ${v.pouch.toUpperCase()} (${pouch.length}):`, { fg: '#ffd166', bold: true }));
   for (const q of pouch) {
     const hp = computeQuestHp(q);
-    console.log(`  ★ [${q.rank}] ${q.title} [${q.realm}] (${hp.pct}% HP)${q.recurrence ? ` [⟳${q.recurrence}]` : ''}`);
+    const progLabel = biome.isPlain ? `${100 - hp.pct}% done` : `${hp.pct}% HP`;
+    console.log(`  ★ [${q.rank}] ${q.title} [${q.realm}] (${progLabel})${q.recurrence ? ` [⟳${q.recurrence}]` : ''}`);
   }
 
   console.log(paint(`\n§ ${v.quests.toUpperCase()} BOARD (${board.length}):`, { fg: '#f09d38', bold: true }));
   for (const q of board) {
     const hp = computeQuestHp(q);
-    console.log(`  · [${q.rank}] ${q.title} [${q.realm}] (${hp.pct}% HP)${q.recurrence ? ` [⟳${q.recurrence}]` : ''}`);
+    const progLabel = biome.isPlain ? `${100 - hp.pct}% done` : `${hp.pct}% HP`;
+    console.log(`  · [${q.rank}] ${q.title} [${q.realm}] (${progLabel})${q.recurrence ? ` [⟳${q.recurrence}]` : ''}`);
   }
   console.log('');
 }
@@ -1625,8 +1745,11 @@ async function main() {
   if (opts.layout && ['classic', 'wartable', 'arena'].includes(opts.layout)) {
     state.hero.layout = opts.layout;
   }
-  if (opts.biome && BIOMES[opts.biome]) {
-    state.hero.activeBiome = opts.biome;
+  if (opts.biome) {
+    const normalizedBiome = ['plain', 'standard', 'none'].includes(opts.biome) ? 'default' : opts.biome;
+    if (BIOMES[normalizedBiome]) {
+      state.hero.activeBiome = normalizedBiome;
+    }
   }
 
   if (opts.command === 'list') {

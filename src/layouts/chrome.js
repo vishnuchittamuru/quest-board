@@ -9,6 +9,7 @@ import {
   RITUAL_PRESETS,
   CADENCES,
   getHeroTitle,
+  getRelicDisplay,
   xpRequiredForLevel,
   isOnTavernLeave,
   getCommissionStatus,
@@ -35,11 +36,17 @@ export function renderTopChrome(screen, tui, palette, biome) {
 
   // Row 0: Header Bar — reserve right side for layout switcher pills so they never clip
   screen.fill(0, 0, w, 1, { fg: palette.text, bg: palette.bg });
-  const layoutPills = [
-    ['classic', '[F1]Board'],
-    ['wartable', '[F2]WarTable'],
-    ['arena', '[F3]Arena'],
-  ];
+  const layoutPills = biome.isPlain
+    ? [
+        ['classic', '[F1]Board'],
+        ['wartable', '[F2]Kanban'],
+        ['arena', '[F3]Focus'],
+      ]
+    : [
+        ['classic', '[F1]Board'],
+        ['wartable', '[F2]WarTable'],
+        ['arena', '[F3]Arena'],
+      ];
   const pillsText = layoutPills.map(([, label]) => label).join(' ');
   const pillX = Math.max(20, w - strWidth(pillsText) - 1);
   let px = pillX;
@@ -61,7 +68,7 @@ export function renderTopChrome(screen, tui, palette, biome) {
   cx = screen.text(cx, 0, ` ✦ ${v.title} `, { fg: palette.headerFg, bg: palette.headerBg, bold: true }, maxLeft);
   if (cx < maxLeft) cx = screen.text(cx, 0, ` ${hero.name} `, { fg: palette.accent, bg: palette.bg, bold: true }, maxLeft - cx);
   if (cx < maxLeft - 14) {
-    const shortLvl = `[Lv.${hero.level} ${getHeroTitle(hero.level)}] `;
+    const shortLvl = `[Lv.${hero.level} ${getHeroTitle(hero.level, biome.isPlain)}] `;
     if (cx + strWidth(shortLvl) + 32 < maxLeft) {
       cx = screen.text(cx, 0, shortLvl, { fg: palette.muted, bg: palette.bg }, maxLeft - cx);
     } else {
@@ -84,7 +91,13 @@ export function renderTopChrome(screen, tui, palette, biome) {
   const leaveActive = isOnTavernLeave(hero);
   if (cx + 8 < maxLeft) {
     if (leaveActive) {
-      cx = screen.text(cx, 0, `│ LEAVE→${hero.leaveUntil} `, { fg: '#80ed99', bg: palette.bg }, maxLeft - cx);
+      cx = screen.text(
+        cx,
+        0,
+        biome.isPlain ? `│ BREAK→${hero.leaveUntil} ` : `│ LEAVE→${hero.leaveUntil} `,
+        { fg: '#80ed99', bg: palette.bg },
+        maxLeft - cx
+      );
     } else {
       const heat = getStreakHeatTier(hero.streak);
       cx = screen.text(cx, 0, `│ ♦ ${hero.streak}d `, { fg: heat.color || palette.accent, bg: palette.bg, bold: hero.streak >= 7 }, maxLeft - cx);
@@ -100,7 +113,9 @@ export function renderTopChrome(screen, tui, palette, biome) {
 
   // Rows 1..3: Streak-Heated NPC & Commission Chest Box (always shows full date on top border)
   const tick = palette.tick || 0;
-  const dateBannerTitle = `◷ ${dateFull}${palette.tod ? ` · ${palette.tod.name}` : ''}${palette.season ? ` · ✧ ${palette.season.name}` : ''}`;
+  const dateBannerTitle = biome.isPlain
+    ? `◷ ${dateFull} · Standard View`
+    : `◷ ${dateFull}${palette.tod ? ` · ${palette.tod.name}` : ''}${palette.season ? ` · ✧ ${palette.season.name}` : ''}`;
   screen.fill(1, 2, Math.max(1, w - 2), 1, { fg: palette.text, bg: palette.panelBg });
   screen.box(0, 1, w, 3, {
     kind: biome.boxKind,
@@ -124,12 +139,12 @@ export function renderTopChrome(screen, tui, palette, biome) {
 
   const rightSegs = [];
   if (comm.claimed) {
-    rightSegs.push([` │ Chest:OPEN `, { fg: '#80ed99', bg: palette.panelBg, bold: true }]);
+    rightSegs.push([biome.isPlain ? ' │ Bonus:CLAIMED ' : ' │ Chest:OPEN ', { fg: '#80ed99', bg: palette.panelBg, bold: true }]);
   } else {
     rightSegs.push([` │ ${v.rituals}: ${commPips} ${comm.completedCount}/${comm.target} `, { fg: palette.ritual, bg: palette.panelBg }]);
   }
   if (hero.pouchClearedToday) {
-    rightSegs.push([`│ ★ FULL CLEAR `, { fg: '#80ed99', bg: palette.panelBg, bold: true }]);
+    rightSegs.push([biome.isPlain ? '│ ★ ALL DONE ' : '│ ★ FULL CLEAR ', { fg: '#80ed99', bg: palette.panelBg, bold: true }]);
   } else {
     rightSegs.push([`│ ${v.pouch}:${pouchCount}/${openCount} `, { fg: palette.pouchAccent, bg: palette.panelBg }]);
   }
@@ -212,10 +227,10 @@ export function getHelpSections(biome) {
       entries: [
         ['[F1] / [F2] / [F3]', 'Switch Board Layout anywhere', 'Switch: Classic Board [F1], Kanban [F2], Focus Arena [F3]'],
         ['[a]', `${v.archive} (Tab on [F1] · Modal on [F2/F3])`, 'View completed tasks archive (stays on F2/F3 as popup)'],
-        ['[t]', 'Biomes & Atmosphere ([1-5], [A], [L])', 'Change theme [1-5], toggle animations [A] & lighting [L]'],
+        ['[t]', 'View Mode & Biomes ([1-6], [0], [A], [L])', 'Switch Default View or Biome [1-6], animations [A], lighting [L]'],
         ['[i]', 'Reliquary & Artifact Vault', 'View unlocked achievement badges and passive bonuses'],
         ['[v]', 'Sanctuary Decree (Tavern Leave)', 'Vacation / rest mode: pause & protect streaks 1-90 days'],
-        ['[g]', `Speak with ${biome.npcName}`, 'Refresh companion status message / tip in top banner'],
+        ['[g]', biome.isPlain ? 'Refresh Status Summary' : `Speak with ${biome.npcName}`, 'Refresh status summary / tip in top banner'],
         ['[K] (Shift+k)', 'Re-forge Vault Passphrase', 'Change your AES-256-GCM encryption password'],
         ['[?]', 'Toggle Field Manual (Help)', 'Open or close this dual-language hotkey reference'],
         ['[q] / [Ctrl+C]', 'Seal Vault & Quit', 'Encrypt, save vault to disk, and exit to terminal'],
@@ -355,13 +370,17 @@ function renderLegendsModal(screen, tui, palette, biome) {
   screen.text(
     innerX,
     cy,
-    `✦ ${v.archive.toUpperCase()} — COMPLETED CHRONICLES (${doneQuests.length}) ✦`,
+    biome.isPlain
+      ? `✦ COMPLETED TASKS ARCHIVE (${doneQuests.length}) ✦`
+      : `✦ ${v.archive.toUpperCase()} — COMPLETED CHRONICLES (${doneQuests.length}) ✦`,
     { fg: '#80ed99', bg: palette.panelBg, bold: true },
     innerW
   );
   cy += 1;
 
-  const statsLine = `Lifetime Slain: ${hero.totalCompleted || doneQuests.length}  │  Best Streak: ${hero.bestStreak || 1}d  │  Critical Hits: ${hero.critsLanded || 0}  │  Relics: ${(hero.relics || []).length}/${RELIC_CATALOG.length}`;
+  const statsLine = biome.isPlain
+    ? `Total Completed: ${hero.totalCompleted || doneQuests.length}  │  Best Streak: ${hero.bestStreak || 1}d  │  Bonus Hits: ${hero.critsLanded || 0}  │  Badges: ${(hero.relics || []).length}/${RELIC_CATALOG.length}`
+    : `Lifetime Slain: ${hero.totalCompleted || doneQuests.length}  │  Best Streak: ${hero.bestStreak || 1}d  │  Critical Hits: ${hero.critsLanded || 0}  │  Relics: ${(hero.relics || []).length}/${RELIC_CATALOG.length}`;
   screen.text(innerX, cy, statsLine, { fg: palette.gold, bg: palette.panelBg }, innerW);
   cy += 1;
   screen.hline(innerX, cy, innerW, '─', { fg: darken(palette.border, 0.25), bg: palette.panelBg });
@@ -424,30 +443,45 @@ export function renderModalOverlay(screen, tui, palette, biome) {
   const lines = []; // each item: array of [text, style] segments
 
   if (modal === 'relics') {
-    lines.push([[`★ RELIQUARY & ARTIFACT VAULT (${hero.relics.length}/${RELIC_CATALOG.length}) ★`, { fg: palette.borderBright, bold: true }]]);
-    lines.push([['Complete high-rank contracts, Fate Bounties & Seasonal events to unearth relics.', { fg: palette.muted }]]);
+    lines.push([
+      [
+        biome.isPlain
+          ? `★ ACHIEVEMENT BADGES & BONUSES (${hero.relics.length}/${RELIC_CATALOG.length}) ★`
+          : `★ RELIQUARY & ARTIFACT VAULT (${hero.relics.length}/${RELIC_CATALOG.length}) ★`,
+        { fg: palette.borderBright, bold: true },
+      ],
+    ]);
+    lines.push([
+      [
+        biome.isPlain
+          ? 'Complete high-priority tasks, random picks & daily habit goals to earn badges.'
+          : 'Complete high-rank contracts, Fate Bounties & Seasonal events to unearth relics.',
+        { fg: palette.muted },
+      ],
+    ]);
     lines.push([['', {}]]);
     for (const relic of RELIC_CATALOG) {
       const owned = hero.relics.includes(relic.id);
+      const disp = getRelicDisplay(relic, biome.isPlain);
       if (owned) {
         lines.push([
-          [`${relic.art} `, { fg: palette.gold, bold: true }],
-          [`${relic.name} `, { fg: palette.text, bold: true }],
-          [`[${relic.rarity}] `, { fg: palette.accent }],
-          [`— ${relic.bonusText}`, { fg: '#80ed99' }],
+          [`${disp.art} `, { fg: palette.gold, bold: true }],
+          [`${disp.name} `, { fg: palette.text, bold: true }],
+          [`[${disp.rarity}] `, { fg: palette.accent }],
+          [`— ${disp.bonusText}`, { fg: '#80ed99' }],
         ]);
       } else {
         const sObj = relic.seasonId ? seasonById(relic.seasonId) : null;
         const hint = sObj ? ` (Drops during ${sObj.name}: ${formatSeasonWindow(sObj)})` : '';
-        lines.push([[` [???]  Undiscovered [${relic.rarity}]${hint}`, { fg: palette.muted }]]);
+        lines.push([[` [???]  Undiscovered [${disp.rarity}]${hint}`, { fg: palette.muted }]]);
       }
     }
     lines.push([['', {}]]);
     lines.push([['Press [Esc] or [i] to close.', { fg: palette.muted }]]);
   } else if (modal === 'biomes') {
     const settings = hero.settings || {};
-    lines.push([[`✦ BIOMES & DYNAMIC ATMOSPHERE (${hero.gold}${v.currencyShort}) ✦`, { fg: palette.borderBright, bold: true }]]);
-    lines.push([['Each Biome transforms colors, vocabulary, NPC & progress metaphors.', { fg: palette.muted }]]);
+    lines.push([[`✦ VIEW MODE, BIOMES & ATMOSPHERE (${hero.gold}${v.currencyShort}) ✦`, { fg: palette.borderBright, bold: true }]]);
+    lines.push([['Select [1] Default (Standard) for plain text, or equip an optional Biome theme.', { fg: palette.muted }]]);
     lines.push([['', {}]]);
     BIOME_LIST.forEach((b, idx) => {
       const unlocked = isBiomeUnlocked(hero, b);
@@ -471,11 +505,16 @@ export function renderModalOverlay(screen, tui, palette, biome) {
       ['[L] ', { fg: palette.borderBright, bold: true }],
       [`Time-of-Day Lighting: ${settings.lighting !== false ? 'ON' : 'OFF'}`, { fg: palette.text }],
     ]);
-    lines.push([['Press [1]-[5] to select Biome, [A]/[L] to toggle effects, or [Esc] to close.', { fg: palette.muted }]]);
+    lines.push([['Press [1]-[6] (or [0] for Default) to select, [A]/[L] to toggle effects, or [Esc] to close.', { fg: palette.muted }]]);
   } else if (modal === 'leave') {
     const activeLeave = isOnTavernLeave(hero);
-    lines.push([[`✦ SANCTUARY DECREE — PLANNED TAVERN LEAVE ✦`, { fg: palette.accent, bold: true }]]);
-    lines.push([[`Protect your ${hero.streak}-day streak & ritual chains before stepping away.`, { fg: palette.text }]]);
+    lines.push([
+      [
+        biome.isPlain ? '✦ SCHEDULE BREAK / VACATION MODE ✦' : '✦ SANCTUARY DECREE — PLANNED TAVERN LEAVE ✦',
+        { fg: palette.accent, bold: true },
+      ],
+    ]);
+    lines.push([[`Protect your ${hero.streak}-day streak & daily habit chains before stepping away.`, { fg: palette.text }]]);
     lines.push([['', {}]]);
     lines.push([
       ['Status: ', { fg: palette.muted }],
@@ -487,14 +526,17 @@ export function renderModalOverlay(screen, tui, palette, biome) {
     lines.push([['[1] ', { fg: palette.borderBright, bold: true }], ['1 Day (Rest Tomorrow)', { fg: palette.text }]]);
     lines.push([['[2] ', { fg: palette.borderBright, bold: true }], ['3 Days (Long Weekend)', { fg: palette.text }]]);
     lines.push([['[3] ', { fg: palette.borderBright, bold: true }], ['7 Days (Full Week Vacation)', { fg: palette.text }]]);
-    lines.push([['[4] ', { fg: palette.borderBright, bold: true }], ['14 Days (Fortnight Expedition)', { fg: palette.text }]]);
+    lines.push([
+      ['[4] ', { fg: palette.borderBright, bold: true }],
+      [biome.isPlain ? '14 Days (Two Weeks)' : '14 Days (Fortnight Expedition)', { fg: palette.text }],
+    ]);
     lines.push([['[5] ', { fg: palette.borderBright, bold: true }], ['Custom Number of Days...', { fg: palette.text }]]);
     lines.push([['[0] ', { fg: palette.borderBright, bold: true }], ['Resume Active Duty Immediately', { fg: palette.text }]]);
     lines.push([['', {}]]);
     lines.push([['Press [1]-[5], [0], or [Esc] to close.', { fg: palette.muted }]]);
   } else if (modal === 'ritual_presets') {
     lines.push([[`⟳ QUICK-ADD ${v.rituals.toUpperCase()} (REPEATING HABITS) ⟳`, { fg: palette.ritual, bold: true }]]);
-    lines.push([['Press [1]-[8] to add a ready-made repeating ritual to your board:', { fg: palette.muted }]]);
+    lines.push([['Press [1]-[8] to add a ready-made repeating habit to your board:', { fg: palette.muted }]]);
     lines.push([['', {}]]);
     RITUAL_PRESETS.forEach((p, idx) => {
       const exists = (tui.state.rituals || []).some(
@@ -521,13 +563,20 @@ export function renderModalOverlay(screen, tui, palette, biome) {
     lines.push([[`           \\  /           `, { fg: palette.gold, bold: true }]]);
     lines.push([[`            \\/            `, { fg: palette.gold, bold: true }]]);
     lines.push([['', {}]]);
-    lines.push([['The Fates are selecting your next contract...', { fg: palette.muted }]]);
+    lines.push([
+      [
+        biome.isPlain
+          ? 'Selecting a random open task for today...'
+          : 'The Fates are selecting your next contract...',
+        { fg: palette.muted },
+      ],
+    ]);
   }
 
-  const boxW = Math.min(screen.w - 4, 80);
-  const boxH = Math.min(screen.h - 4, lines.length + 4);
+  const boxW = Math.min(screen.w - 4, 88);
+  const boxH = Math.min(screen.h - 2, lines.length + 4);
   const sx = Math.max(2, Math.floor((screen.w - boxW) / 2));
-  const sy = Math.max(2, Math.floor((screen.h - boxH) / 2));
+  const sy = Math.max(1, Math.floor((screen.h - boxH) / 2));
 
   screen.fill(sx, sy, boxW, boxH, { fg: palette.text, bg: palette.panelBg, solid: true });
   screen.box(sx, sy, boxW, boxH, {
@@ -558,32 +607,54 @@ export function renderFooter(screen, tui, palette, biome) {
       ['[</>]', palette.borderBright], [`Move ${v.realm} `, palette.muted],
       ['[Space]', palette.borderBright], ['Pick/Charge ', palette.muted],
       ['[c]', palette.borderBright], [`${v.slay} `, palette.muted],
-      ['[Enter]', palette.borderBright], ['Arena ', palette.muted],
+      ['[Enter]', palette.borderBright], [biome.isPlain ? 'Focus ' : 'Arena ', palette.muted],
       ['[n]', palette.borderBright], ['New ', palette.muted],
-      ['[P]', palette.ritual], ['Ritual Presets', palette.muted],
+      ['[P]', palette.ritual], [biome.isPlain ? 'Habit Presets' : 'Ritual Presets', palette.muted],
     ];
   } else if (layout === 'arena') {
-    r1 = [
-      [' [1-9]', palette.borderBright], ['Attack Move ', palette.muted],
-      ['[Space]', palette.borderBright], ['Direct Strike ', palette.muted],
-      ['[f]', palette.accent], ['Start/Pause Focus ', palette.muted],
-      ['[\\]', palette.borderBright], ['Cycle Timer ', palette.muted],
-      ['[F]', palette.borderBright], ['Finish Round ', palette.muted],
-      ['[c]', palette.borderBright], ['Final Blow ', palette.muted],
-      ['[m]', palette.borderBright], ['+Note ', palette.muted],
-      ['[Esc]', palette.borderBright], ['Retreat', palette.muted],
-    ];
+    r1 = biome.isPlain
+      ? [
+          [' [1-9]', palette.borderBright], ['Toggle Step ', palette.muted],
+          ['[Space]', palette.borderBright], ['Next Step ', palette.muted],
+          ['[f]', palette.accent], ['Start/Pause Focus ', palette.muted],
+          ['[\\]', palette.borderBright], ['Cycle Timer ', palette.muted],
+          ['[F]', palette.borderBright], ['Finish Round ', palette.muted],
+          ['[c]', palette.borderBright], ['Complete ', palette.muted],
+          ['[m]', palette.borderBright], ['+Note ', palette.muted],
+          ['[Esc]', palette.borderBright], ['Back', palette.muted],
+        ]
+      : [
+          [' [1-9]', palette.borderBright], ['Attack Move ', palette.muted],
+          ['[Space]', palette.borderBright], ['Direct Strike ', palette.muted],
+          ['[f]', palette.accent], ['Start/Pause Focus ', palette.muted],
+          ['[\\]', palette.borderBright], ['Cycle Timer ', palette.muted],
+          ['[F]', palette.borderBright], ['Finish Round ', palette.muted],
+          ['[c]', palette.borderBright], ['Final Blow ', palette.muted],
+          ['[m]', palette.borderBright], ['+Note ', palette.muted],
+          ['[Esc]', palette.borderBright], ['Retreat', palette.muted],
+        ];
   } else {
-    r1 = [
-      [' [↑/↓]', palette.borderBright], ['Select ', palette.muted],
-      ['[Space]', palette.borderBright], ['Pick/Charge ', palette.muted],
-      ['[1-9]', palette.borderBright], ['Strike ', palette.muted],
-      ['[c]', palette.borderBright], [`${v.slay} `, palette.muted],
-      ['[Enter]', palette.borderBright], ['Arena ', palette.muted],
-      ['[d]', palette.accent], [`${v.fate} `, palette.muted],
-      ['[n]', palette.borderBright], ['New ', palette.muted],
-      ['[s/m]', palette.borderBright], ['+Step/+Note', palette.muted],
-    ];
+    r1 = biome.isPlain
+      ? [
+          [' [↑/↓]', palette.borderBright], ['Select ', palette.muted],
+          ['[Space]', palette.borderBright], ['Pick/Check ', palette.muted],
+          ['[1-9]', palette.borderBright], ['Step ', palette.muted],
+          ['[c]', palette.borderBright], [`${v.slay} `, palette.muted],
+          ['[Enter]', palette.borderBright], ['Focus ', palette.muted],
+          ['[d]', palette.accent], [`${v.fate} `, palette.muted],
+          ['[n]', palette.borderBright], ['New ', palette.muted],
+          ['[s/m]', palette.borderBright], ['+Step/+Note', palette.muted],
+        ]
+      : [
+          [' [↑/↓]', palette.borderBright], ['Select ', palette.muted],
+          ['[Space]', palette.borderBright], ['Pick/Charge ', palette.muted],
+          ['[1-9]', palette.borderBright], ['Strike ', palette.muted],
+          ['[c]', palette.borderBright], [`${v.slay} `, palette.muted],
+          ['[Enter]', palette.borderBright], ['Arena ', palette.muted],
+          ['[d]', palette.accent], [`${v.fate} `, palette.muted],
+          ['[n]', palette.borderBright], ['New ', palette.muted],
+          ['[s/m]', palette.borderBright], ['+Step/+Note', palette.muted],
+        ];
   }
 
   let r2 = [];
@@ -595,20 +666,20 @@ export function renderFooter(screen, tui, palette, biome) {
       ['[o]', palette.borderBright], ['Sort ', palette.muted],
       ['[e/x/u]', palette.borderBright], ['Edit/Del ', palette.muted],
       ['[P]', palette.ritual], ['Presets ', palette.muted],
-      ['[v]', '#80ed99'], ['Leave ', palette.muted],
-      ['[i]', palette.borderBright], ['Relics ', palette.muted],
-      ['[t]', palette.borderBright], ['Biomes ', palette.muted],
+      ['[v]', '#80ed99'], [biome.isPlain ? 'Break ' : 'Leave ', palette.muted],
+      ['[i]', palette.borderBright], [biome.isPlain ? 'Badges ' : 'Relics ', palette.muted],
+      ['[t]', palette.borderBright], [biome.isPlain ? 'View/Theme ' : 'Biomes ', palette.muted],
       ['[?]', palette.borderBright], ['Help ', palette.muted],
       ['[q]', palette.borderBright], ['Quit', palette.muted],
     ];
   } else {
     r2 = [
-      [' [a]', '#80ed99'], ['Legends ', palette.muted],
+      [' [a]', '#80ed99'], [biome.isPlain ? 'Done ' : 'Legends ', palette.muted],
       ['[r/R]', palette.borderBright], ['Rank/Repeat ', palette.muted],
       ['[e/x/u]', palette.borderBright], ['Edit/Del ', palette.muted],
-      ['[v]', '#80ed99'], ['Leave ', palette.muted],
-      ['[i]', palette.borderBright], ['Relics ', palette.muted],
-      ['[t]', palette.borderBright], ['Biomes ', palette.muted],
+      ['[v]', '#80ed99'], [biome.isPlain ? 'Break ' : 'Leave ', palette.muted],
+      ['[i]', palette.borderBright], [biome.isPlain ? 'Badges ' : 'Relics ', palette.muted],
+      ['[t]', palette.borderBright], [biome.isPlain ? 'View/Theme ' : 'Biomes ', palette.muted],
       ['[?]', palette.borderBright], ['Help ', palette.muted],
       ['[q]', palette.borderBright], ['Quit', palette.muted],
     ];

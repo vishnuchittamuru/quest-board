@@ -73,10 +73,10 @@ export const CADENCE_KEYS = ['daily', 'weekdays', 'weekends', 'weekly', 'every3d
 export const RITUAL_PRESETS = [
   { title: 'Drink Water & Hydrate', targetCount: 8, cadence: 'daily', rank: 'C', realm: 'Homestead', note: '8 glasses a day keeps fatigue away.' },
   { title: 'Physical Workout / Movement', targetCount: 1, cadence: 'daily', rank: 'B', realm: 'Main Campaign', note: '30m of strength, cardio, or mobility.' },
-  { title: '10-Minute Sanctum Tidy & Clean', targetCount: 1, cadence: 'daily', rank: 'C', realm: 'Homestead', note: 'Reset desk, dishes, and room.' },
+  { title: '10-Minute Desk & Room Tidy', targetCount: 1, cadence: 'daily', rank: 'C', realm: 'Homestead', note: 'Reset desk, dishes, and room.' },
   { title: 'Deep Focus / Skill Study', targetCount: 1, cadence: 'weekdays', rank: 'B', realm: 'Arcane Study', note: 'Focused learning without distractions.' },
   { title: '10,000 Steps / Outdoor Walk', targetCount: 1, cadence: 'daily', rank: 'B', realm: 'Main Campaign', note: 'Step outside for fresh air & sunlight.' },
-  { title: 'Inbox Zero & Scroll Triage', targetCount: 1, cadence: 'weekdays', rank: 'C', realm: 'Craft & Code', note: 'Clear messages and plan tomorrow.' },
+  { title: 'Inbox Zero & Message Triage', targetCount: 1, cadence: 'weekdays', rank: 'C', realm: 'Craft & Code', note: 'Clear messages and plan tomorrow.' },
   { title: 'Meditation & Breathwork', targetCount: 1, cadence: 'daily', rank: 'D', realm: 'Homestead', note: '5–10 minutes of calm stillness.' },
   { title: 'Weekly Deep Clean & Laundry', targetCount: 1, cadence: 'weekends', rank: 'B', realm: 'Homestead', note: 'Refresh linens, floors, and supplies.' },
 ];
@@ -94,109 +94,156 @@ export const HERO_TITLES = [
   { level: 10, title: 'Grandmaster of Aethoria' },
 ];
 
+export const PLAIN_HERO_TITLES = [
+  { level: 1, title: 'Beginner' },
+  { level: 2, title: 'Regular' },
+  { level: 3, title: 'Consistent' },
+  { level: 4, title: 'Focused' },
+  { level: 5, title: 'Proficient' },
+  { level: 6, title: 'Advanced' },
+  { level: 7, title: 'Specialist' },
+  { level: 8, title: 'Expert' },
+  { level: 9, title: 'Master' },
+  { level: 10, title: 'Grandmaster' },
+];
+
 export const RELIC_CATALOG = [
   {
     id: 'mug_of_roast',
     name: 'Bottomless Tankard of Dark Roast',
+    plainName: 'Morning Momentum Badge',
     rarity: 'Uncommon',
     art: '[c|_|]',
     lore: 'Brewed by Dwarven alchemists. Never cools, never empties.',
     bonusText: '+5% XP on all quests & rituals',
+    plainBonusText: '+5% XP on all tasks & habits',
   },
   {
     id: 'featherquill_blade',
     name: 'Enchanted Featherquill Rapier',
+    plainName: 'Checklist Finisher Badge',
     rarity: 'Rare',
     art: '=={==> ',
     lore: 'Slices through bureaucracy and overdue scrolls in a single stroke.',
     bonusText: '+5 Bonus XP per sub-step strike',
+    plainBonusText: '+5 Bonus XP per sub-step completed',
   },
   {
     id: 'weighted_d20',
     name: 'Starforged Ivory d20',
+    plainName: 'Decisive Action Badge',
     rarity: 'Epic',
     art: '< 20 >',
     lore: 'Hums softly when indecisiveness enters the tavern.',
     bonusText: '+10% Gold on Fate Bounty quests',
+    plainBonusText: '+10% Points on Random Pick tasks',
   },
   {
     id: 'hourglass_focus',
     name: 'Chronosand Hourglass',
+    plainName: 'Deep Work Timer Badge',
     rarity: 'Rare',
     art: ' (><) ',
     lore: 'Bends the afternoon hours so deadlines dare not approach.',
     bonusText: '+15 Bonus XP on S & A Rank quests',
+    plainBonusText: '+15 Bonus XP on S & A Priority tasks',
   },
   {
     id: 'owl_monocle',
     name: "Garrick's Spare Brass Monocle",
+    plainName: 'Sharp Planner Badge',
     rarity: 'Rare',
     art: ' -(O)-',
     lore: 'Reveals hidden flaws in poorly written plans.',
     bonusText: '+5 Gold on every quest completion',
+    plainBonusText: '+5 Points on every task completion',
   },
   {
     id: 'dragonscale_seal',
     name: 'Crimson Dragonscale Crest',
+    plainName: 'High-Impact Finisher Badge',
     rarity: 'Mythic',
     art: ' /VV\\ ',
     lore: 'Warm to the touch. Proof that no Boss Task can intimidate you.',
     bonusText: '+10% XP & Gold across the realm',
+    plainBonusText: '+10% XP & Points across all categories',
   },
   {
     id: 'lantern_of_dawn',
     name: 'Everglow Wayfinder Lantern',
+    plainName: 'Daily Clear Badge',
     rarity: 'Uncommon',
     art: ' [(*)]',
     lore: 'Guides adventurers safely through midnight coding and deep work.',
     bonusText: '+20 Bonus XP on Daily Full-Clear',
+    plainBonusText: "+20 Bonus XP on Today's List Full-Clear",
   },
   {
     id: 'coin_of_fortune',
     name: 'Twin-Headed Sovereign Coin',
+    plainName: 'Consistency Bonus Badge',
     rarity: 'Epic',
     art: ' ($+$)',
     lore: 'Heads you win, tails the procrastination loses.',
     bonusText: '+10 Gold on Daily Full-Clear',
+    plainBonusText: "+10 Points on Today's List Full-Clear",
   },
   // Seasonal Relics
   {
     id: 'frost_globe',
     name: 'Frostfall Snowglobe',
+    plainName: 'Winter Focus Badge',
     rarity: 'Seasonal',
     seasonId: 'frostfall',
     art: ' (*o*)',
     lore: 'Swirls with perpetual winter magic from the Frostfall festival.',
     bonusText: '+10 Bonus XP on Winter quests',
+    plainBonusText: '+10 Bonus XP on Winter tasks',
   },
   {
     id: 'everbloom_sprig',
     name: 'Everbloom Blossom Sprig',
+    plainName: 'Spring Habit Badge',
     rarity: 'Seasonal',
     seasonId: 'spring',
     art: ' --✿--',
     lore: 'Never wilts; reminds you that small daily tending yields wonders.',
     bonusText: '+5 Bonus XP on Daily Ritual completions',
+    plainBonusText: '+5 Bonus XP on Daily Habit completions',
   },
   {
     id: 'firefly_jar',
     name: 'Midsummer Firefly Lantern',
+    plainName: 'Summer Focus Badge',
     rarity: 'Seasonal',
     seasonId: 'midsummer',
     art: ' [·*·]',
     lore: 'Captures the glow of warm solstice nights.',
     bonusText: '+10 Focus Round XP',
+    plainBonusText: '+10 Focus Round XP',
   },
   {
     id: 'harvest_lantern',
     name: 'Harvest Moon Pumpkin Charm',
+    plainName: 'Autumn Routine Badge',
     rarity: 'Seasonal',
     seasonId: 'harvest',
     art: ' (oVo)',
     lore: 'Carved during the Harvest Moon to attract bountiful rewards.',
     bonusText: '+5 Bonus Gold on Daily Commissions',
+    plainBonusText: '+5 Bonus Points on Daily Habit Goals',
   },
 ];
+
+export function getRelicDisplay(relic, isPlain = false) {
+  if (!relic) return { name: '', bonusText: '', rarity: '', art: '' };
+  return {
+    name: isPlain && relic.plainName ? relic.plainName : relic.name,
+    bonusText: isPlain && relic.plainBonusText ? relic.plainBonusText : relic.bonusText,
+    rarity: relic.rarity,
+    art: relic.art,
+  };
+}
 
 // ============================================================================
 // DATE, STREAK & TAVERN LEAVE LOGIC
@@ -289,7 +336,7 @@ export function createStarterRituals() {
     },
     {
       id: 'rit-tidy',
-      title: '10-Minute Sanctum Tidy & Clean',
+      title: '10-Minute Desk & Room Tidy',
       cadence: 'daily',
       targetCount: 1,
       progressCount: 0,
@@ -501,10 +548,15 @@ export function migrateState(state) {
   const hero = state.hero;
 
   if (!hero.activeBiome) {
-    hero.activeBiome = LEGACY_THEME_MAP[hero.activeTheme] || 'tavern';
+    hero.activeBiome = LEGACY_THEME_MAP[hero.activeTheme] || 'default';
   }
   if (!Array.isArray(hero.unlockedBiomes)) {
-    hero.unlockedBiomes = ['tavern', 'crt'];
+    hero.unlockedBiomes = ['default', 'tavern', 'crt'];
+  } else if (!hero.unlockedBiomes.includes('default')) {
+    hero.unlockedBiomes.unshift('default');
+  }
+  if ((state.version || 2) < 3) {
+    hero.activeBiome = 'default';
   }
   if (!hero.settings) {
     hero.settings = { animations: true, lighting: true };
@@ -530,7 +582,7 @@ export function migrateState(state) {
     state.rituals = createStarterRituals();
   }
 
-  state.version = 2;
+  state.version = 3;
   return state;
 }
 
@@ -664,7 +716,7 @@ export function createInitialState(heroName = 'Wayfarer') {
   const now = new Date().toISOString();
   const today = getLocalDateKey();
   return {
-    version: 2,
+    version: 3,
     hero: {
       name: heroName,
       level: 1,
@@ -685,8 +737,8 @@ export function createInitialState(heroName = 'Wayfarer') {
       leaveReason: null,
       protectedDates: [],
       relics: ['mug_of_roast'],
-      unlockedBiomes: ['tavern', 'crt'],
-      activeBiome: 'tavern',
+      unlockedBiomes: ['default', 'tavern', 'crt'],
+      activeBiome: 'default',
       layout: 'classic',
       settings: { animations: true, lighting: true },
     },
@@ -770,9 +822,10 @@ export function xpRequiredForLevel(level) {
   return Math.floor(120 * Math.pow(level, 1.35));
 }
 
-export function getHeroTitle(level) {
-  let current = HERO_TITLES[0].title;
-  for (const t of HERO_TITLES) {
+export function getHeroTitle(level, isPlain = false) {
+  const list = isPlain ? PLAIN_HERO_TITLES : HERO_TITLES;
+  let current = list[0].title;
+  for (const t of list) {
     if (level >= t.level) current = t.title;
   }
   return current;
@@ -948,6 +1001,51 @@ export function generateGuildmasterSpeech(state, now = new Date()) {
   const openQuests = state.quests.filter((q) => q.status === 'open');
   const pouchQuests = openQuests.filter((q) => q.inPouch);
   const comm = getCommissionStatus(state, now);
+
+  if (biome.isPlain) {
+    if (isOnTavernLeave(hero, getLocalDateKey(now))) {
+      return {
+        mood: 'leave',
+        line: `Break mode active until ${hero.leaveUntil}. Your ${hero.streak}-day streak is paused and protected.`,
+      };
+    }
+
+    if (hero.pouchClearedToday) {
+      return {
+        mood: 'hype',
+        line: `All tasks in ${v.pouch} completed today! Check [y] ${v.rituals} or take a break.`,
+      };
+    }
+
+    if (comm.target > 0 && comm.completedCount < comm.target && Math.random() < 0.3) {
+      return {
+        mood: 'idle',
+        line: `${comm.completedCount}/${comm.target} ${v.rituals} done today — complete ${comm.target} for the Daily Habit Bonus!`,
+      };
+    }
+
+    if (pouchQuests.length === 0 && openQuests.length > 0) {
+      return {
+        mood: 'tease',
+        line: `${v.pouch} is empty. Press [Space] to pick tasks for today, or [d] for a ${v.fate}.`,
+      };
+    }
+
+    const dusty = Array.from(getDustyRealms(state, 7, now));
+    if (dusty.length > 0 && Math.random() < 0.35) {
+      return {
+        mood: 'tease',
+        line: `Category '${dusty[0]}' has no recent activity. Switch to [F2] Kanban to review.`,
+      };
+    }
+
+    const hour = now.getHours();
+    const tod = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+    return {
+      mood: 'idle',
+      line: `Good ${tod}! ${pouchQuests.length} in ${v.pouch}, ${comm.completedCount}/${comm.target} ${v.rituals}, ${hero.streak}d streak.`,
+    };
+  }
 
   if (isOnTavernLeave(hero, getLocalDateKey(now))) {
     return {

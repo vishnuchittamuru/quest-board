@@ -7,12 +7,67 @@ import { mix, lighten, darken } from './color.js';
 import { activeSeason } from './seasons.js';
 
 export const BIOMES = {
+  default: {
+    id: 'default',
+    name: 'Default (Standard)',
+    desc: 'Clean, non-themed view with normal text, standard progress %, and no NPCs or lore.',
+    cost: 0,
+    deedDesc: 'Default View (Always Unlocked)',
+    isPlain: true,
+    boxKind: 'single',
+    progressMode: 'progress',
+    ambient: 'none',
+    npcName: 'Status',
+    npcMoods: {
+      idle: ' [INFO] ',
+      hype: ' [DONE] ',
+      crit: ' [STEP] ',
+      fate: ' [PICK] ',
+      leave: ' [AWAY] ',
+      tease: ' [TIP]  ',
+    },
+    vocab: {
+      title: 'QUEST BOARD',
+      quest: 'Task',
+      quests: 'Tasks',
+      currency: 'Points',
+      currencyShort: 'pt',
+      realm: 'Category',
+      realms: 'Categories',
+      pouch: "Today's List",
+      ritual: 'Daily Habit',
+      rituals: 'Daily Habits',
+      fate: 'Random Pick',
+      slay: 'Complete',
+      archive: 'Completed',
+    },
+    palette: {
+      bg: '#0f1419',
+      panelBg: '#161d26',
+      headerBg: '#1e293b',
+      headerFg: '#f8fafc',
+      border: '#334155',
+      borderBright: '#38bdf8',
+      accent: '#38bdf8',
+      accent2: '#818cf8',
+      text: '#e2e8f0',
+      muted: '#94a3b8',
+      highlightBg: '#1e293b',
+      pouchAccent: '#fbbf24',
+      hpFull: '#ef4444',
+      hpMid: '#f59e0b',
+      hpLow: '#10b981',
+      xpBar: '#38bdf8',
+      gold: '#fbbf24',
+      ritual: '#34d399',
+    },
+  },
   tavern: {
     id: 'tavern',
     name: 'Tavern Hearth',
     desc: 'Warm hearth-fire amber, aged oak parchment & Guildmaster Garrick.',
     cost: 0,
-    deedDesc: 'Starter Biome',
+    deedDesc: 'Classic Fantasy Biome (Always Unlocked)',
     boxKind: 'double',
     progressMode: 'hp',
     ambient: 'embers',
@@ -277,8 +332,9 @@ export const BIOMES = {
 export const BIOME_LIST = Object.values(BIOMES);
 
 export function getBiome(state) {
-  const id = state?.hero?.activeBiome || 'tavern';
-  return BIOMES[id] || BIOMES.tavern;
+  const raw = state?.hero?.activeBiome || 'default';
+  const id = ['plain', 'standard', 'none'].includes(raw) ? 'default' : raw;
+  return BIOMES[id] || BIOMES.default;
 }
 
 export function isBiomeUnlocked(hero, biome) {
@@ -306,8 +362,8 @@ export function resolvePalette(state, date = new Date(), tick = 0) {
   const base = { ...biome.palette };
   const settings = state?.hero?.settings || {};
 
-  // CRT focus mode stays crisp monochrome without tint washes.
-  if (biome.id !== 'crt') {
+  // CRT focus mode and Default (Standard) view stay clean without tint washes.
+  if (biome.id !== 'crt' && !biome.isPlain) {
     if (settings.lighting !== false) {
       const tod = getTimeOfDayPhase(date);
       base.bg = mix(base.bg, tod.tint, tod.amount * 0.6);
@@ -326,8 +382,8 @@ export function resolvePalette(state, date = new Date(), tick = 0) {
   return {
     ...base,
     tick,
-    season: activeSeason(date),
-    tod: getTimeOfDayPhase(date),
+    season: biome.isPlain ? null : activeSeason(date),
+    tod: biome.isPlain ? null : getTimeOfDayPhase(date),
   };
 }
 
@@ -364,6 +420,7 @@ export function renderAmbientParticles(screen, state, palette, tick = 0) {
   if (settings.animations === false) return;
 
   const biome = getBiome(state);
+  if (biome.isPlain) return;
   const season = palette.season;
   const mode = season && biome.id !== 'crt' ? season.overlay : biome.ambient;
   if (!mode || mode === 'none') return;

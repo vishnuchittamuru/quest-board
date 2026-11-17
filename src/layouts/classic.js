@@ -56,7 +56,7 @@ export function renderClassicLayout(screen, tui, palette, biome) {
   if (1 + fullTabsW + reserveRealmW > w) {
     // Compact labels when terminal width is tight so the Task Group bar never clips
     const shortArchive = v.archive.split(' ').pop() || 'Legends';
-    const compactArchive = w < 102 ? 'Legends' : shortArchive;
+    const compactArchive = w < 102 ? (biome.isPlain ? 'Done' : 'Legends') : shortArchive;
     const compactPouch = w < 102 ? truncate(v.pouch, 10) : v.pouch;
     const compactRituals = w < 102 ? truncate(v.rituals, 11) : v.rituals;
     tabs = [
@@ -189,7 +189,7 @@ function renderQuestList(screen, tui, palette, biome, x, y, w, h) {
   // Distinct summary bar on Hall of Legends archive tab so it never looks like the open board
   if (tui.viewTab === 'archive' && h > 6) {
     const hero = tui.state.hero;
-    const summary = `✦ ${v.archive}: ${list.length} archived · Slain: ${hero.totalCompleted || 0} · Best Streak: ${hero.bestStreak || 1}d · [u] Reopen`;
+    const summary = `✦ ${v.archive}: ${list.length} archived · ${biome.isPlain ? 'Completed' : 'Slain'}: ${hero.totalCompleted || 0} · Best Streak: ${hero.bestStreak || 1}d · [u] Reopen`;
     screen.text(x + 1, cy, summary, { fg: '#80ed99', bg: palette.bg, bold: true }, w - 2);
     cy += 1;
     screen.hline(x, cy, w, '─', { fg: darken(palette.muted, 0.35), bg: palette.bg });
@@ -225,7 +225,8 @@ function renderQuestList(screen, tui, palette, biome, x, y, w, h) {
     const rankMeta = RANKS[q.rank] || RANKS.C;
     const hp = computeQuestHp(q);
     const isBloom = biome.progressMode === 'bloom';
-    const progressPct = isBloom ? 100 - hp.pct : hp.pct;
+    const isStandard = biome.progressMode === 'progress';
+    const progressPct = isBloom || isStandard ? 100 - hp.pct : hp.pct;
 
     const bg = selected ? palette.highlightBg : palette.bg;
     if (selected) screen.fill(x, rowY, w, 2, { fg: palette.text, bg });
@@ -245,12 +246,16 @@ function renderQuestList(screen, tui, palette, biome, x, y, w, h) {
     lx = screen.text(lx, rowY, q.title, { fg: palette.text, bg, bold: selected }, titleMax);
     screen.segs(lx, rowY, badges, x + w - lx);
 
-    // Line 2 of item: Realm + HP/Growth Bar
+    // Line 2 of item: Realm + HP/Growth/Progress Bar
     let sx = x + 4;
     sx = screen.text(sx, rowY + 1, `‹${truncate(q.realm || 'General', 14)}› `, { fg: palette.muted, bg });
-    sx = screen.put(sx, rowY + 1, isBloom ? 'Grow:' : 'HP:', { fg: palette.muted, bg });
+    sx = screen.put(sx, rowY + 1, isBloom ? 'Grow:' : isStandard ? 'Done:' : 'HP:', { fg: palette.muted, bg });
     const barColor = isBloom
       ? palette.ritual
+      : isStandard
+      ? progressPct >= 100
+        ? '#4ade80'
+        : palette.xpBar
       : hp.pct > 60
       ? palette.hpFull
       : hp.pct > 25
@@ -277,6 +282,7 @@ function renderQuestInspector(screen, tui, palette, biome, x, y, w, h) {
   const xpReward = Math.round(rankMeta.xp * mult);
   const goldReward = Math.round(rankMeta.gold * mult);
   const isBloom = biome.progressMode === 'bloom';
+  const isStandard = biome.progressMode === 'progress';
   let cy = y;
 
   // Status Header
@@ -307,7 +313,7 @@ function renderQuestInspector(screen, tui, palette, biome, x, y, w, h) {
 
   // Rewards
   const rewardSegs = [
-    ['Bounty: ', { fg: palette.muted, bg: palette.bg }],
+    [biome.isPlain ? 'Reward: ' : 'Bounty: ', { fg: palette.muted, bg: palette.bg }],
     [`+${xpReward} XP  `, { fg: palette.xpBar, bg: palette.bg, bold: true }],
     [`+${goldReward}${v.currencyShort}`, { fg: palette.gold, bg: palette.bg, bold: true }],
   ];
@@ -317,14 +323,33 @@ function renderQuestInspector(screen, tui, palette, biome, x, y, w, h) {
   screen.segs(x + 1, cy, rewardSegs, w - 2);
   cy += 1;
 
-  // Boss HP or Bloom Growth Bar
-  const pct = isBloom ? 100 - hp.pct : hp.pct;
+  // Boss HP, Bloom Growth, or Standard Progress Bar
+  const pct = isBloom || isStandard ? 100 - hp.pct : hp.pct;
   const barW = Math.max(10, Math.min(22, w - 28));
-  let bx = screen.put(x + 1, cy, isBloom ? 'Growth: [' : 'Boss HP:[', { fg: palette.muted, bg: palette.bg });
-  const barColor = isBloom ? palette.ritual : hp.pct > 60 ? palette.hpFull : hp.pct > 25 ? palette.hpMid : palette.hpLow;
+  let bx = screen.put(
+    x + 1,
+    cy,
+    isBloom ? 'Growth: [' : isStandard ? 'Progress: [' : 'Boss HP:[',
+    { fg: palette.muted, bg: palette.bg }
+  );
+  const barColor = isBloom
+    ? palette.ritual
+    : isStandard
+    ? pct >= 100
+      ? '#4ade80'
+      : palette.xpBar
+    : hp.pct > 60
+    ? palette.hpFull
+    : hp.pct > 25
+    ? palette.hpMid
+    : palette.hpLow;
   drawBar(screen, bx, cy, barW, pct, barColor, darken(palette.muted, 0.45), palette.bg);
   bx += barW;
-  const barEnd = isBloom ? `] ${getGrowthLabel(pct)} (${pct}%)` : `] ${hp.current}/${hp.max} (${hp.pct}%)`;
+  const barEnd = isBloom
+    ? `] ${getGrowthLabel(pct)} (${pct}%)`
+    : isStandard
+    ? `] ${pct}%${hp.totalCount > 0 ? ` (${hp.doneCount}/${hp.totalCount} steps)` : ''}`
+    : `] ${hp.current}/${hp.max} (${hp.pct}%)`;
   screen.text(bx, cy, barEnd, { fg: palette.text, bg: palette.bg, bold: true }, x + w - bx);
   cy += 1;
 
@@ -336,8 +361,11 @@ function renderQuestInspector(screen, tui, palette, biome, x, y, w, h) {
     x + 1,
     cy,
     [
-      ['► SUB-STEPS ', { fg: palette.accent, bg: palette.bg, bold: true }],
-      ['([1-9] Strike · [s] Add · [F3] Battle Arena)', { fg: palette.muted, bg: palette.bg }],
+      [biome.isPlain ? '► CHECKLIST STEPS ' : '► SUB-STEPS ', { fg: palette.accent, bg: palette.bg, bold: true }],
+      [
+        biome.isPlain ? '([1-9] Toggle · [s] Add · [F3] Focus Mode)' : '([1-9] Strike · [s] Add · [F3] Battle Arena)',
+        { fg: palette.muted, bg: palette.bg },
+      ],
     ],
     w - 2
   );
@@ -345,7 +373,13 @@ function renderQuestInspector(screen, tui, palette, biome, x, y, w, h) {
 
   const steps = q.steps || [];
   if (steps.length === 0) {
-    screen.text(x + 3, cy, 'No sub-steps yet. Press [s] to add objectives!', { fg: palette.muted, bg: palette.bg }, w - 4);
+    screen.text(
+      x + 3,
+      cy,
+      biome.isPlain ? 'No steps yet. Press [s] to add checklist steps!' : 'No sub-steps yet. Press [s] to add objectives!',
+      { fg: palette.muted, bg: palette.bg },
+      w - 4
+    );
     cy += 1;
   } else {
     steps.slice(0, 9).forEach((st, idx) => {
@@ -370,7 +404,7 @@ function renderQuestInspector(screen, tui, palette, biome, x, y, w, h) {
       x + 1,
       cy,
       [
-        ['§ FIELD NOTES ', { fg: palette.accent2, bg: palette.bg, bold: true }],
+        [biome.isPlain ? '§ NOTES ' : '§ FIELD NOTES ', { fg: palette.accent2, bg: palette.bg, bold: true }],
         ['([m] Add Note)', { fg: palette.muted, bg: palette.bg }],
       ],
       w - 2
@@ -378,7 +412,13 @@ function renderQuestInspector(screen, tui, palette, biome, x, y, w, h) {
     cy += 1;
     const notes = q.notes || [];
     if (notes.length === 0 && cy < y + h) {
-      screen.text(x + 3, cy, 'No notes inscribed yet.', { fg: palette.muted, bg: palette.bg }, w - 4);
+      screen.text(
+        x + 3,
+        cy,
+        biome.isPlain ? 'No notes added yet.' : 'No notes inscribed yet.',
+        { fg: palette.muted, bg: palette.bg },
+        w - 4
+      );
     } else {
       for (const note of notes) {
         for (const nl of wrap(`• ${note}`, w - 4)) {
@@ -401,7 +441,10 @@ function renderRitualList(screen, tui, palette, biome, x, y, w, h) {
     cy,
     [
       [`⟳ ${v.rituals.toUpperCase()} `, { fg: palette.ritual, bg: palette.bg, bold: true }],
-      ['([Space] Strike/Charge · [P] Presets · [n] New)', { fg: palette.muted, bg: palette.bg }],
+      [
+        biome.isPlain ? '([Space] Check/Count · [P] Presets · [n] New)' : '([Space] Strike/Charge · [P] Presets · [n] New)',
+        { fg: palette.muted, bg: palette.bg },
+      ],
     ],
     w - 2
   );
@@ -463,7 +506,7 @@ function renderRitualList(screen, tui, palette, biome, x, y, w, h) {
       [
         [charge, { fg: r.completedToday ? '#80ed99' : palette.ritual, bg }],
         [`  ‹${r.realm || 'Homestead'}›`, { fg: palette.muted, bg }],
-        !due && !r.completedToday ? [' (Off-duty today)', { fg: palette.muted, bg }] : null,
+        !due && !r.completedToday ? [biome.isPlain ? ' (Not due today)' : ' (Off-duty today)', { fg: palette.muted, bg }] : null,
       ],
       w - 4
     );
@@ -515,7 +558,7 @@ function renderRitualInspector(screen, tui, palette, biome, x, y, w, h) {
     [
       ['Cadence: ', { fg: palette.muted, bg: palette.bg }],
       [`${cad.label} `, { fg: palette.accent, bg: palette.bg, bold: true }],
-      ['│ Mastery: ', { fg: palette.muted, bg: palette.bg }],
+      [biome.isPlain ? '│ Streak Tier: ' : '│ Mastery: ', { fg: palette.muted, bg: palette.bg }],
       [`${mastery.badge} ${mastery.label} (${mastery.mult}x Rewards)`, { fg: mastery.hex, bg: palette.bg, bold: true }],
     ],
     w - 2
@@ -524,7 +567,7 @@ function renderRitualInspector(screen, tui, palette, biome, x, y, w, h) {
 
   const pct = Math.round((Math.min(r.progressCount || 0, r.targetCount || 1) / Math.max(1, r.targetCount || 1)) * 100);
   const barW = Math.max(10, Math.min(20, w - 30));
-  let bx = screen.put(x + 1, cy, 'Charges:[', { fg: palette.muted, bg: palette.bg });
+  let bx = screen.put(x + 1, cy, biome.isPlain ? 'Progress:[' : 'Charges:[', { fg: palette.muted, bg: palette.bg });
   drawBar(screen, bx, cy, barW, pct, r.completedToday ? '#80ed99' : palette.ritual, darken(palette.muted, 0.45), palette.bg);
   bx += barW;
   screen.text(bx, cy, `] ${r.progressCount || 0}/${r.targetCount || 1}  (Chain: ${r.streak || 0}d · Total: ${r.totalCompletions || 0})`, { fg: palette.text, bg: palette.bg }, x + w - bx);
@@ -539,10 +582,10 @@ function renderRitualInspector(screen, tui, palette, biome, x, y, w, h) {
     x + 1,
     cy,
     [
-      ['Completion Bounty: ', { fg: palette.muted, bg: palette.bg }],
+      [biome.isPlain ? 'Completion Reward: ' : 'Completion Bounty: ', { fg: palette.muted, bg: palette.bg }],
       [`+${xp} XP `, { fg: palette.xpBar, bg: palette.bg, bold: true }],
       [`+${gold}${v.currencyShort}`, { fg: palette.gold, bg: palette.bg, bold: true }],
-      r.targetCount > 1 ? [`  (+6 XP per [Space] charge)`, { fg: palette.muted, bg: palette.bg }] : null,
+      r.targetCount > 1 ? [`  (+6 XP per [Space] ${biome.isPlain ? 'check' : 'charge'})`, { fg: palette.muted, bg: palette.bg }] : null,
     ],
     w - 2
   );
@@ -552,8 +595,13 @@ function renderRitualInspector(screen, tui, palette, biome, x, y, w, h) {
     x + 1,
     cy,
     [
-      ['§ RITUAL NOTES ', { fg: palette.accent2, bg: palette.bg, bold: true }],
-      ['([m] Add Note · [Space] Charge/Complete · [F3] Arena)', { fg: palette.muted, bg: palette.bg }],
+      [biome.isPlain ? '§ HABIT NOTES ' : '§ RITUAL NOTES ', { fg: palette.accent2, bg: palette.bg, bold: true }],
+      [
+        biome.isPlain
+          ? '([m] Add Note · [Space] Check/Count · [F3] Focus)'
+          : '([m] Add Note · [Space] Charge/Complete · [F3] Arena)',
+        { fg: palette.muted, bg: palette.bg },
+      ],
     ],
     w - 2
   );

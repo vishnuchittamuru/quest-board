@@ -18,9 +18,10 @@ A zero-dependency, **AES-256-GCM encrypted** RPG Quest Board & Habit Tracker for
 - **Daily Commission Supply Chest**: Completing your daily rituals opens a bonus chest (`+60 XP`, `+30 Gold`, + Relic roll).
 - **Recurring Board Quests (`R`)**: Toggle repeat cadences on regular board quests so completed weekly chores respawn automatically.
 
-### 3. Biomes, Wizards & Dual-Language Help (`t`, `n`, `e`, `?`)
-Each Biome transforms **colors, box borders, vocabulary, NPC companion, progress metaphors, add/edit wizards, and ambient particles**:
-- **Tavern Hearth** (Default) — Guildmaster Garrick, drifting embers
+### 3. Default View, Biomes & Dual-Language Help (`t`, `n`, `e`, `?`)
+Starts in **Default (Standard)** view — clean, plain language (`Tasks`, `Today's List`, `Daily Habits`, `Categories`, `Points`, `Badges`, standard `0%–100%` progress) with no NPCs, fantasy lore, or ambient particles. Press **`t`** anytime (or launch with `--plain` / `--biome <id>`) to switch between Standard View and any optional **Biome** theme, each transforming colors, box borders, vocabulary, NPC companion, progress metaphors, add/edit wizards, and ambient particles:
+- **Default (Standard)** *(Starting Default)* — Clean non-themed productivity view, plain text & standard progress bars
+- **Tavern Hearth** — Guildmaster Garrick, drifting embers
 - **Neon Syndicate** — Fixer AI NYX, cyberpunk `Gigs` & `Creds`, digital rain
 - **Cozy Cottage** — Granny Owl, falling petals, quests *sprout and bloom* instead of losing HP
 - **Pirate Cove** — Captain Polly, `Bounties` & `Doubloons`, ocean swells
@@ -41,6 +42,7 @@ Press **`?`** anytime for the **Field Manual**, showing every hotkey for `[F1]`,
 cd quest-board
 .\quest
 # or: npm start
+# or: node quest-board.js --plain
 # or: node quest-board.js --no-anim
 ```
 

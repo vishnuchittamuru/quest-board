@@ -26,16 +26,25 @@ export function renderArenaLayout(screen, tui, palette, biome) {
   if (availH < 10) return;
 
   const target = tui.getArenaTarget();
+  const isStandard = biome.progressMode === 'progress' || biome.isPlain;
   if (!target) {
     screen.fill(0, topY, w, availH, { fg: palette.text, bg: palette.bg });
     screen.box(0, topY, w, availH, {
       kind: biome.boxKind,
       st: { fg: palette.border, bg: palette.bg },
-      title: '⚔ BATTLE ARENA — NO TARGET LOCKED',
+      title: isStandard ? '◷ FOCUS MODE — NO TASK SELECTED' : '⚔ BATTLE ARENA — NO TARGET LOCKED',
       titleSt: { fg: palette.accent, bg: palette.bg, bold: true },
     });
     screen.text(3, topY + 3, `No open ${v.quest.toLowerCase()} or ${v.ritual.toLowerCase()} selected.`, { fg: palette.muted, bg: palette.bg }, w - 6);
-    screen.text(3, topY + 4, '► Press [F1] Board or [F2] War Table, select a target, and press [Enter] or [F3]!', { fg: palette.accent, bg: palette.bg }, w - 6);
+    screen.text(
+      3,
+      topY + 4,
+      isStandard
+        ? '► Press [F1] Board or [F2] Kanban, select a task, and press [Enter] or [F3]!'
+        : '► Press [F1] Board or [F2] War Table, select a target, and press [Enter] or [F3]!',
+      { fg: palette.accent, bg: palette.bg },
+      w - 6
+    );
     return;
   }
 
@@ -65,6 +74,8 @@ export function renderArenaLayout(screen, tui, palette, biome) {
 
   const leftTitle = isBloom
     ? `✿ SANCTUARY GARDEN · ${item.title}`
+    : isStandard
+    ? `◷ FOCUS MODE · ${item.title}`
     : `⚔ BATTLE ARENA · ${item.title}`;
   screen.box(0, topY, leftW, availH, {
     kind: biome.boxKind,
@@ -75,14 +86,18 @@ export function renderArenaLayout(screen, tui, palette, biome) {
   screen.box(leftW, topY, rightW, availH, {
     kind: biome.boxKind,
     st: { fg: palette.border, bg: palette.bg },
-    title: isBloom ? '§ TENDING LOG & NOTES' : '§ COMBAT LOG & FIELD NOTES',
+    title: isBloom ? '§ TENDING LOG & NOTES' : isStandard ? '§ SESSION LOG & NOTES' : '§ COMBAT LOG & FIELD NOTES',
     titleSt: { fg: palette.accent2, bg: palette.bg, bold: true },
   });
 
-  // LEFT PANE: Monster / Botanical Art + Stats + Focus Timer + Attack Moves
+  // LEFT PANE: Monster / Botanical / Focus Card Art + Stats + Focus Timer + Attack Moves
   let cy = topY + 1;
   const artColor = isBloom
     ? palette.ritual
+    : isStandard
+    ? pctProgress >= 100
+      ? '#4ade80'
+      : palette.accent
     : pctRemaining > 60
     ? palette.hpFull
     : pctRemaining > 25
@@ -105,19 +120,19 @@ export function renderArenaLayout(screen, tui, palette, biome) {
   screen.text(infoX, cy + 1, encounter.subtitle, { fg: palette.muted, bg: palette.bg }, infoW);
 
   const barW = Math.max(10, Math.min(24, infoW - 8));
-  const barLabel = isBloom ? 'Bloom:' : 'HP:   ';
+  const barLabel = isBloom ? 'Bloom:' : isStandard ? 'Done: ' : 'HP:   ';
   screen.put(infoX, cy + 2, barLabel, { fg: palette.muted, bg: palette.bg });
   drawBar(
     screen,
     infoX + 6,
     cy + 2,
     barW,
-    isBloom ? pctProgress : pctRemaining,
+    isBloom || isStandard ? pctProgress : pctRemaining,
     artColor,
     darken(palette.muted, 0.45),
     palette.bg
   );
-  const pctStr = isBloom ? `${pctProgress}%` : `${pctRemaining}%`;
+  const pctStr = isBloom || isStandard ? `${pctProgress}%` : `${pctRemaining}%`;
   screen.text(infoX + 6 + barW + 1, cy + 2, pctStr, { fg: palette.text, bg: palette.bg, bold: true }, 6);
 
   // Focus Pomodoro Round Box
@@ -145,14 +160,14 @@ export function renderArenaLayout(screen, tui, palette, biome) {
     cy += 1;
   }
 
-  // Attack Moves / Tending Actions
+  // Attack Moves / Tending Actions / Checklist Steps
   if (isRitual) {
     const mastery = getRitualMastery(item.streak);
     screen.segs(
       2,
       cy,
       [
-        ['⟳ REPEATING CHARGES: ', { fg: palette.ritual, bg: palette.bg, bold: true }],
+        [isStandard ? '⟳ DAILY PROGRESS: ' : '⟳ REPEATING CHARGES: ', { fg: palette.ritual, bg: palette.bg, bold: true }],
         [renderChargeBar(item.progressCount, item.targetCount, 12), { fg: palette.text, bg: palette.bg, bold: true }],
         [`  (${mastery.badge} ${item.streak || 0}d chain)`, { fg: mastery.hex, bg: palette.bg }],
       ],
@@ -160,22 +175,46 @@ export function renderArenaLayout(screen, tui, palette, biome) {
     );
     cy += 2;
     if (cy < bottomY - 2) {
-      screen.text(3, cy, '► [Space] Log +1 Charge / Strike   [c] Complete Today   [u] Reset', { fg: palette.accent, bg: palette.bg }, leftW - 5);
+      screen.text(
+        3,
+        cy,
+        isStandard
+          ? '► [Space] Log +1 Count   [c] Complete Today   [u] Reset'
+          : '► [Space] Log +1 Charge / Strike   [c] Complete Today   [u] Reset',
+        { fg: palette.accent, bg: palette.bg },
+        leftW - 5
+      );
     }
   } else {
     screen.segs(
       2,
       cy,
       [
-        [isBloom ? '✿ TENDING ACTIONS ' : '⚔ ATTACK MOVES ', { fg: palette.accent, bg: palette.bg, bold: true }],
-        ['([1-9] Sub-step · [Space] Direct Strike · [c] Final Blow)', { fg: palette.muted, bg: palette.bg }],
+        [
+          isBloom ? '✿ TENDING ACTIONS ' : isStandard ? '► CHECKLIST STEPS ' : '⚔ ATTACK MOVES ',
+          { fg: palette.accent, bg: palette.bg, bold: true },
+        ],
+        [
+          isStandard
+            ? '([1-9] Toggle Step · [Space] Next Step · [c] Complete)'
+            : '([1-9] Sub-step · [Space] Direct Strike · [c] Final Blow)',
+          { fg: palette.muted, bg: palette.bg },
+        ],
       ],
       leftW - 4
     );
     cy += 1;
     const steps = item.steps || [];
     if (steps.length === 0) {
-      screen.text(3, cy + 1, 'No sub-steps defined. Press [Space] to deal Direct Strike damage, or [s] to add steps!', { fg: palette.muted, bg: palette.bg }, leftW - 5);
+      screen.text(
+        3,
+        cy + 1,
+        isStandard
+          ? 'No steps defined. Press [Space] to log +25% progress, or [s] to add steps!'
+          : 'No sub-steps defined. Press [Space] to deal Direct Strike damage, or [s] to add steps!',
+        { fg: palette.muted, bg: palette.bg },
+        leftW - 5
+      );
     } else {
       steps.slice(0, 9).forEach((st, idx) => {
         if (cy >= bottomY - 1) return;
@@ -211,11 +250,25 @@ export function renderArenaLayout(screen, tui, palette, biome) {
   screen.hline(leftW + 1, ry, rightW - 2, '─', { fg: darken(palette.muted, 0.35), bg: palette.bg });
   ry += 1;
 
-  screen.text(rx, ry, isBloom ? '✿ RECENT TENDING LOG' : '⚔ COMBAT & FOCUS LOG', { fg: palette.accent, bg: palette.bg, bold: true }, rw);
+  screen.text(
+    rx,
+    ry,
+    isBloom ? '✿ RECENT TENDING LOG' : isStandard ? '◷ SESSION & PROGRESS LOG' : '⚔ COMBAT & FOCUS LOG',
+    { fg: palette.accent, bg: palette.bg, bold: true },
+    rw
+  );
   ry += 1;
   const log = (item.combatLog || []).slice(-6);
   if (log.length === 0) {
-    screen.text(rx, ry, 'Strike a move or start a Focus Round to record combat events.', { fg: palette.muted, bg: palette.bg }, rw);
+    screen.text(
+      rx,
+      ry,
+      isStandard
+        ? 'Complete a step or start a Focus Round to log activity.'
+        : 'Strike a move or start a Focus Round to record combat events.',
+      { fg: palette.muted, bg: palette.bg },
+      rw
+    );
     ry += 1;
   } else {
     for (const entry of log) {
@@ -228,7 +281,7 @@ export function renderArenaLayout(screen, tui, palette, biome) {
   if (ry < bottomY - 3) {
     screen.hline(leftW + 1, ry, rightW - 2, '─', { fg: darken(palette.muted, 0.35), bg: palette.bg });
     ry += 1;
-    screen.text(rx, ry, '§ FIELD NOTES ([m] Add Note)', { fg: palette.accent2, bg: palette.bg, bold: true }, rw);
+    screen.text(rx, ry, isStandard ? '§ NOTES ([m] Add Note)' : '§ FIELD NOTES ([m] Add Note)', { fg: palette.accent2, bg: palette.bg, bold: true }, rw);
     ry += 1;
     for (const note of item.notes || []) {
       for (const nl of wrap(`• ${note}`, rw)) {

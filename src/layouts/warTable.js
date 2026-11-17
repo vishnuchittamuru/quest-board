@@ -6,6 +6,7 @@
 
 import { darken, mix } from '../color.js';
 import { truncate } from '../text.js';
+import { getBiome } from '../biomes.js';
 import {
   RANKS,
   CADENCES,
@@ -21,7 +22,7 @@ export function buildWarTableColumns(state) {
   const cols = [
     {
       id: '__rituals__',
-      title: 'DAILY RITUALS',
+      title: getBiome(state).vocab.rituals.toUpperCase(),
       isRituals: true,
       items: [...(state.rituals || [])].sort((a, b) => {
         if (a.completedToday !== b.completedToday) return a.completedToday ? 1 : -1;
@@ -86,7 +87,9 @@ export function renderWarTableLayout(screen, tui, palette, biome) {
 
   // Subtle top bar showing horizontal scroll & active selection
   screen.fill(0, topY, w, 1, { fg: palette.muted, bg: palette.panelBg });
-  const navHint = ` ⚔ WAR TABLE (${tui.warCol + 1}/${columns.length} Columns) · [←/→] Column · [↑/↓] Card · [</>] Move ${v.realm} · [Enter] Battle Arena`;
+  const navHint = biome.isPlain
+    ? ` ▦ KANBAN BOARD (${tui.warCol + 1}/${columns.length} Columns) · [←/→] Column · [↑/↓] Card · [</>] Move ${v.realm} · [Enter] Focus Mode`
+    : ` ⚔ WAR TABLE (${tui.warCol + 1}/${columns.length} Columns) · [←/→] Column · [↑/↓] Card · [</>] Move ${v.realm} · [Enter] Battle Arena`;
   screen.text(0, topY, navHint, { fg: palette.accent, bg: palette.panelBg, bold: true }, w);
 
   const colY = topY + 1;
@@ -112,7 +115,7 @@ export function renderWarTableLayout(screen, tui, palette, biome) {
     });
     const headerTag = col.isRituals
       ? `⟳ ${v.rituals.toUpperCase()} (${col.items.length})`
-      : `${col.title.toUpperCase()} (${col.items.length})${isDusty ? ' [DUSTY]' : ''}`;
+      : `${col.title.toUpperCase()} (${col.items.length})${isDusty ? (biome.isPlain ? ' [STALE]' : ' [DUSTY]') : ''}`;
 
     screen.box(cx, colY, cw, colH, {
       kind: biome.boxKind,
@@ -131,9 +134,9 @@ export function renderWarTableLayout(screen, tui, palette, biome) {
       const comm = getCommissionStatus(tui.state);
       const pct = comm.target > 0 ? Math.round((comm.completedCount / comm.target) * 100) : 0;
       const barW = Math.max(6, Math.min(12, cw - 15));
-      let bx = screen.put(cx + 2, iy, 'Chest:', { fg: palette.muted, bg: palette.bg });
+      let bx = screen.put(cx + 2, iy, biome.isPlain ? 'Goal:' : 'Chest:', { fg: palette.muted, bg: palette.bg });
       drawBar(screen, bx, iy, barW, pct, comm.claimed ? '#80ed99' : palette.ritual, darken(palette.muted, 0.45), palette.bg);
-      screen.text(bx + barW + 1, iy, comm.claimed ? 'OPEN' : `${comm.completedCount}/${comm.target}`, {
+      screen.text(bx + barW + 1, iy, comm.claimed ? (biome.isPlain ? 'DONE' : 'OPEN') : `${comm.completedCount}/${comm.target}`, {
         fg: comm.claimed ? '#80ed99' : palette.text,
         bg: palette.bg,
         bold: comm.claimed,
@@ -202,7 +205,8 @@ export function renderWarTableLayout(screen, tui, palette, biome) {
         const rankMeta = RANKS[item.rank] || RANKS.C;
         const hp = computeQuestHp(item);
         const isBloom = biome.progressMode === 'bloom';
-        const pct = isBloom ? 100 - hp.pct : hp.pct;
+        const isStandard = biome.progressMode === 'progress';
+        const pct = isBloom || isStandard ? 100 - hp.pct : hp.pct;
 
         let lx = cx + 2;
         lx = screen.put(lx, cardY + 1, `${item.rank}`, { fg: '#111111', bg: rankMeta.hex, bold: true });
@@ -210,8 +214,18 @@ export function renderWarTableLayout(screen, tui, palette, biome) {
         screen.text(lx, cardY + 1, item.title, { fg: palette.text, bg: cardBg, bold: isSelected }, cardW - 6);
 
         const barW = Math.max(6, cardW - 14);
-        let bx = screen.put(cx + 2, cardY + 2, isBloom ? 'Gr:' : 'HP:', { fg: palette.muted, bg: cardBg });
-        const barColor = isBloom ? palette.ritual : hp.pct > 60 ? palette.hpFull : hp.pct > 25 ? palette.hpMid : palette.hpLow;
+        let bx = screen.put(cx + 2, cardY + 2, isBloom ? 'Gr:' : isStandard ? 'Pr:' : 'HP:', { fg: palette.muted, bg: cardBg });
+        const barColor = isBloom
+          ? palette.ritual
+          : isStandard
+          ? pct >= 100
+            ? '#4ade80'
+            : palette.xpBar
+          : hp.pct > 60
+          ? palette.hpFull
+          : hp.pct > 25
+          ? palette.hpMid
+          : palette.hpLow;
         drawBar(screen, bx, cardY + 2, barW, pct, barColor, darken(palette.muted, 0.45), cardBg);
         const tail = item.recurrence ? ' ⟳' : item.bountyMultiplier > 1 ? ' ♦' : ` ${pct}%`;
         screen.text(bx + barW, cardY + 2, tail, { fg: palette.muted, bg: cardBg }, 6);

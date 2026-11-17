@@ -115,6 +115,46 @@ const BOTANICAL_STAGES = [
   ],
 ];
 
+// Default (Standard) Focus Mode uses a clean 4-stage checklist/progress card.
+const PLAIN_FOCUS_STAGES = [
+  [
+    '  ┌─────────────┐  ',
+    '  │  ◷  00:00   │  ',
+    '  │  [░░░░░░░]  │  ',
+    '  │  [ ] Step 1 │  ',
+    '  │  [ ] Step 2 │  ',
+    '  └─────────────┘  ',
+    '   (Ready: 0%)     ',
+  ],
+  [
+    '  ┌─────────────┐  ',
+    '  │  ◷  FOCUS   │  ',
+    '  │  [███░░░░]  │  ',
+    '  │  [x] Step 1 │  ',
+    '  │  [ ] Step 2 │  ',
+    '  └─────────────┘  ',
+    '  (In Progress)    ',
+  ],
+  [
+    '  ┌─────────────┐  ',
+    '  │  ◷  FOCUS   │  ',
+    '  │  [█████░░]  │  ',
+    '  │  [x] Step 1 │  ',
+    '  │  [x] Step 2 │  ',
+    '  └─────────────┘  ',
+    '  (Nearly Done)    ',
+  ],
+  [
+    '  ┌─────────────┐  ',
+    '  │  ✔  DONE!   │  ',
+    '  │  [███████]  │  ',
+    '  │  [x] Step 1 │  ',
+    '  │  [x] Step 2 │  ',
+    '  └─────────────┘  ',
+    '  (100% Complete)  ',
+  ],
+];
+
 function hashString(str) {
   let h = 2166136261;
   for (let i = 0; i < str.length; i++) {
@@ -126,6 +166,21 @@ function hashString(str) {
 
 export function generateEncounter(item, biome, progressPct = 0) {
   const rank = item?.rank || 'B';
+  if (biome?.isPlain || biome?.progressMode === 'progress') {
+    const stageIdx =
+      progressPct >= 100 ? 3 : progressPct >= 60 ? 2 : progressPct >= 25 ? 1 : 0;
+    return {
+      isBloom: false,
+      isPlain: true,
+      name: `PRIORITY ${rank} — ${(item?.title || 'TASK').toUpperCase()}`,
+      subtitle: `${biome?.vocab?.realm || 'Category'}: ${item?.realm || 'General'} · ${progressPct}% Done`,
+      art: PLAIN_FOCUS_STAGES[stageIdx],
+      taunt: 'Ready to focus. Break the work into clear steps.',
+      staggerLine: 'Good momentum — keep checking off steps.',
+      defeatLine: 'All steps finished! Press [c] to mark complete.',
+    };
+  }
+
   const seedStr = `${item?.id || ''}:${item?.title || 'Quest'}`;
   const h = hashString(seedStr);
 
